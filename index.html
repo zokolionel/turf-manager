@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TURF MANAGER PRO</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --green-dark: #0A2E1A;
+    --green: #1B5E35;
+    --green-light: #2D8653;
+    --gold: #C9A84C;
+    --gold-light: #F0D080;
+    --cream: #F5F0E8;
+    --dirt: #8B6914;
+    --red: #C0392B;
+    --blue: #2980B9;
+    --purple: #6B4C9A;
+    --text: #1A1A1A;
+    --muted: #7A7A7A;
+    --panel: #FFFFFF;
+    --bg: #F0EDE6;
+    --border: #DDD8CE;
+    --paper: #FBF8F1;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* HEADER */
+  .header {
+    background: var(--green-dark);
+    padding: 13px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    border-bottom: 3px solid var(--gold);
+  }
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--gold-light);
+  }
+  .back-btn { background: none; border: none; color: var(--gold-light); font-size: 20px; cursor: pointer; padding: 4px 8px; }
+  .money-badge { background: var(--gold); color: var(--green-dark); font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 20px; }
+
+  /* WELCOME */
+  #screen-welcome {
+    background: linear-gradient(180deg, var(--green-dark) 0%, #0d3d22 50%, var(--green-dark) 100%);
+    justify-content: center; align-items: center; text-align: center; padding: 40px 24px;
+    position: relative; overflow: hidden;
+  }
+  #screen-welcome::before { content: '🏇'; position: absolute; font-size: 220px; opacity: 0.05; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .logo-turf { font-family: 'Playfair Display', serif; font-size: 50px; font-weight: 900; color: var(--gold-light); line-height: 1; text-shadow: 0 2px 20px rgba(201,168,76,0.4); }
+  .logo-sub { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--gold); letter-spacing: 4px; text-transform: uppercase; margin-top: 6px; }
+  .welcome-desc { color: rgba(255,255,255,0.6); font-size: 14px; margin: 26px 0 38px; line-height: 1.7; }
+  .feature-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 32px; }
+  .feature-pill { background: rgba(201,168,76,0.15); color: var(--gold-light); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  /* SETUP */
+  .setup-body { flex: 1; overflow-y: auto; padding: 20px 16px 40px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--green); margin: 22px 0 10px; }
+  .section-label:first-child { margin-top: 0; }
+  .field-input { width: 100%; background: var(--panel); border: 1.5px solid var(--border); color: var(--text); padding: 13px 14px; border-radius: 10px; font-size: 15px; outline: none; font-family: 'Inter',sans-serif; }
+  .field-input:focus { border-color: var(--green); }
+  .stable-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .type-card { background: var(--panel); border: 2px solid var(--border); border-radius: 12px; padding: 14px 10px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .type-card.selected { border-color: var(--green); background: rgba(27,94,53,0.08); }
+  .type-emoji { font-size: 26px; margin-bottom: 5px; }
+  .type-name { font-weight: 600; font-size: 14px; }
+  .type-desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* HUB */
+  .hub-body { flex: 1; overflow-y: auto; padding-bottom: 85px; }
+  .stable-hero { background: linear-gradient(135deg, var(--green-dark), var(--green)); padding: 18px 16px; color: white; }
+  .stable-name { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: var(--gold-light); }
+  .stable-meta { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+  .stable-stats-row { display: flex; gap: 14px; margin-top: 14px; flex-wrap: wrap; }
+  .stable-stat { text-align: center; }
+  .stable-stat-val { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--gold-light); }
+  .stable-stat-label { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 14px 16px; }
+  .qa-card { background: var(--panel); border-radius: 12px; padding: 13px 8px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); text-align: center; -webkit-tap-highlight-color: transparent; }
+  .qa-card:active { transform: scale(0.96); }
+  .qa-icon { font-size: 24px; margin-bottom: 5px; }
+  .qa-title { font-weight: 600; font-size: 12px; }
+
+  .horses-section { padding: 0 16px 16px; }
+  .horses-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .horses-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; }
+
+  .horse-card { background: var(--panel); border-radius: 12px; padding: 13px; margin-bottom: 10px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+  .horse-card:active { transform: scale(0.99); }
+  .horse-card-row { display: flex; align-items: center; gap: 11px; }
+  .horse-emoji { font-size: 30px; width: 44px; text-align: center; }
+  .horse-info { flex: 1; }
+  .horse-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .horse-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .horse-record { font-size: 11px; font-weight: 600; margin-top: 3px; }
+  .horse-overall { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--green); }
+  .star-rating { color: var(--gold); font-size: 11px; }
+
+  .mini-bars { margin-top: 9px; }
+  .mini-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .mini-bar-label { font-size: 10px; color: var(--muted); width: 64px; flex-shrink: 0; }
+  .mini-bar-wrap { flex: 1; background: var(--border); height: 6px; border-radius: 3px; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 3px; }
+  .mini-bar-val { font-size: 11px; font-weight: 600; width: 22px; text-align: right; }
+
+  /* GENERIC BODY */
+  .scroll-body { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 100px; }
+
+  /* MARKET */
+  .market-horse-card { background: var(--panel); border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid var(--border); }
+  .market-horse-row { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+  .market-horse-info { flex: 1; }
+  .market-horse-price { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: var(--dirt); text-align: right; }
+  .market-horse-potential { font-size: 11px; color: var(--muted); text-align: right; }
+
+  /* TAGS */
+  .tag { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; margin-right: 3px; }
+  .tag-green { background: rgba(27,94,53,0.12); color: var(--green); }
+  .tag-gold { background: rgba(201,168,76,0.15); color: var(--dirt); }
+  .tag-blue { background: rgba(41,128,185,0.1); color: var(--blue); }
+  .tag-red { background: rgba(192,57,43,0.1); color: var(--red); }
+  .tag-purple { background: rgba(107,76,154,0.12); color: var(--purple); }
+
+  /* SELECTOR PILLS */
+  .horse-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px; scrollbar-width: none; }
+  .horse-selector::-webkit-scrollbar { display: none; }
+  .horse-pill { background: var(--panel); border: 2px solid var(--border); border-radius: 30px; padding: 8px 15px; white-space: nowrap; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; flex-shrink: 0; }
+  .horse-pill.selected { border-color: var(--green); background: rgba(27,94,53,0.1); color: var(--green); font-weight: 600; }
+
+  /* TRAINING */
+  .training-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .training-opt { background: var(--panel); border: 2px solid var(--border); border-radius: 12px; padding: 13px; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .training-opt.selected { border-color: var(--green); background: rgba(27,94,53,0.08); }
+  .training-opt-icon { font-size: 22px; margin-bottom: 5px; }
+  .training-opt-name { font-weight: 600; font-size: 13px; }
+  .training-opt-bonus { font-size: 11px; color: var(--green); margin-top: 3px; }
+  .training-opt-cost { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .horse-stat-panel { background: var(--panel); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid var(--border); }
+
+  /* RACE CARD - newspaper style */
+  .racecard { background: var(--paper); border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .racecard-header { border-bottom: 2px solid var(--green-dark); padding-bottom: 8px; margin-bottom: 10px; }
+  .racecard-grade { display: inline-block; background: var(--green-dark); color: var(--gold-light); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .racecard-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 800; margin-top: 6px; }
+  .racecard-details { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .racecard-prize { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--dirt); margin-top: 6px; }
+  .runner-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--border); font-size: 12px; }
+  .runner-row:last-child { border-bottom: none; }
+  .runner-num { width: 20px; height: 20px; background: var(--green-dark); color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .runner-row.mine { background: rgba(201,168,76,0.1); border-radius: 6px; padding: 6px 8px; }
+  .runner-name { flex: 1; font-weight: 500; }
+  .runner-odds { font-weight: 700; color: var(--dirt); }
+
+  /* RACE LOG */
+  .race-log { background: var(--green-dark); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-height: 100px; font-size: 13px; line-height: 1.9; color: rgba(255,255,255,0.5); border: 1px solid var(--green); }
+  .race-log-line { color: rgba(255,255,255,0.9); }
+  .race-log-line.win { color: var(--gold-light); font-weight: 600; }
+  .race-log-line.lose { color: #FF6B6B; }
+  .race-log-line.podium { color: #7ECFA0; }
+
+  /* RESULT */
+  .result-banner { border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 14px; }
+  .result-banner.first { background: linear-gradient(135deg, #8B6914, var(--gold)); }
+  .result-banner.podium { background: linear-gradient(135deg, #2D5016, var(--green)); }
+  .result-banner.lose { background: var(--paper); border: 2px solid var(--border); }
+  .result-pos { font-family: 'Playfair Display', serif; font-size: 48px; font-weight: 900; }
+  .result-pos.first { color: white; } .result-pos.podium { color: var(--gold-light); } .result-pos.lose { color: var(--muted); }
+  .result-sub { font-size: 14px; margin-top: 4px; }
+  .result-sub.first, .result-sub.podium { color: rgba(255,255,255,0.85); } .result-sub.lose { color: var(--muted); }
+  .result-prize { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; margin-top: 8px; }
+  .result-prize.first, .result-prize.podium { color: white; } .result-prize.lose { color: var(--green-dark); }
+
+  /* BETTING */
+  .bet-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .bet-options { display: flex; gap: 8px; margin-top: 10px; }
+  .bet-chip { flex: 1; background: var(--bg); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+  .bet-chip.selected { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+
+  /* BREEDING */
+  .breed-select-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .breed-slot { flex: 1; background: var(--panel); border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+  .breed-slot.filled { border-style: solid; border-color: var(--green); }
+  .breed-slot-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .breed-vs { display: flex; align-items: center; font-size: 20px; color: var(--gold); }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--green-dark); border-top: 2px solid var(--gold); display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 0 12px; z-index: 10; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; padding: 3px; }
+  .nav-icon { font-size: 19px; }
+  .nav-label { font-size: 9px; color: rgba(255,255,255,0.5); }
+  .nav-item.active .nav-label { color: var(--gold-light); }
+
+  /* BUTTONS */
+  .btn-primary { width: 100%; background: var(--green); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); }
+  .btn-gold { width: 100%; background: var(--gold); color: var(--green-dark); border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+  .btn-gold:active { transform: scale(0.98); }
+  .btn-secondary { width: 100%; background: transparent; color: var(--text); border: 1.5px solid var(--border); padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+  .btn-danger { width: 100%; background: transparent; color: var(--red); border: 1.5px solid var(--red); padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+
+  .info-box { background: rgba(27,94,53,0.08); border-left: 3px solid var(--green); border-radius: 4px; padding: 12px 14px; font-size: 13px; color: var(--muted); margin-bottom: 14px; line-height: 1.6; }
+  .notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--green-dark); color: var(--gold-light); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity 0.3s; white-space: nowrap; max-width: 90vw; text-align: center; }
+  .notification.show { opacity: 1; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  .week-banner { background: var(--panel); border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border: 1px solid var(--border); }
+  .week-val { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--green); }
+  .section-title-sm { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; justify-content: flex-end; flex-direction: column; }
+  .modal-overlay.show { display: flex; }
+  .modal-sheet { background: var(--bg); border-radius: 20px 20px 0 0; padding: 22px 18px 36px; max-height: 75vh; overflow-y: auto; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; margin-bottom: 16px; text-align: center; color: var(--green-dark); }
+
+  /* STAFF */
+  .staff-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .staff-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .staff-emoji { font-size: 28px; }
+  .staff-name { font-weight: 700; font-size: 14px; }
+  .staff-role { font-size: 11px; color: var(--muted); }
+  .staff-effect { font-size: 12px; color: var(--green); margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div class="notification" id="notification"></div>
+
+<!-- WELCOME -->
+<div class="screen active" id="screen-welcome">
+  <div class="logo-turf">TURF</div>
+  <div class="logo-sub">Manager Pro</div>
+  <p class="welcome-desc">Le simulateur de turf le plus complet.<br>Élève, entraîne, et bâtis une dynastie.</p>
+  <div class="feature-pills">
+    <span class="feature-pill">🧬 Élevage</span>
+    <span class="feature-pill">📜 Lignée</span>
+    <span class="feature-pill">👔 Staff</span>
+    <span class="feature-pill">🎰 Paris</span>
+    <span class="feature-pill">🏆 Courses graduées</span>
+  </div>
+  <button class="btn-primary" onclick="showScreen('setup')" style="position:relative;z-index:1">🏇 Créer mon écurie</button>
+</div>
+
+<!-- SETUP -->
+<div class="screen" id="screen-setup">
+  <div class="header">
+    <button class="back-btn" onclick="showScreen('welcome')">←</button>
+    <span class="header-title">Fonder l'écurie</span>
+    <div></div>
+  </div>
+  <div class="setup-body">
+    <div class="section-label">Nom de l'écurie</div>
+    <input class="field-input" id="stable-name-input" placeholder="Ex: Écurie Belmont" maxlength="30">
+    <div class="section-label">Propriétaire</div>
+    <input class="field-input" id="owner-name-input" placeholder="Ton nom" maxlength="25">
+    <div class="section-label">Spécialité</div>
+    <div class="stable-type-grid">
+      <div class="type-card" onclick="selectType('flat')" id="type-flat"><div class="type-emoji">🏃</div><div class="type-name">Plat</div><div class="type-desc">Vitesse pure</div></div>
+      <div class="type-card" onclick="selectType('jumps')" id="type-jumps"><div class="type-emoji">🚧</div><div class="type-name">Obstacles</div><div class="type-desc">Endurance & saut</div></div>
+      <div class="type-card" onclick="selectType('trot')" id="type-trot"><div class="type-emoji">🐎</div><div class="type-name">Trot</div><div class="type-desc">Cadence régulière</div></div>
+      <div class="type-card" onclick="selectType('mixed')" id="type-mixed"><div class="type-emoji">⭐</div><div class="type-name">Mixte</div><div class="type-desc">Polyvalent</div></div>
+    </div>
+    <div style="height:24px"></div>
+    <button class="btn-primary" onclick="createStable()">Commencer →</button>
+  </div>
+</div>
+
+<!-- HUB -->
+<div class="screen" id="screen-hub">
+  <div class="header"><span class="header-title">🏆 Turf Manager Pro</span><div class="money-badge" id="hub-money">€15,000</div></div>
+  <div class="hub-body">
+    <div class="stable-hero">
+      <div class="stable-name" id="hub-stable-name">—</div>
+      <div class="stable-meta" id="hub-stable-meta">—</div>
+      <div class="stable-stats-row">
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-horses">0</div><div class="stable-stat-label">Chevaux</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-wins">0</div><div class="stable-stat-label">Victoires</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-prestige">⭐</div><div class="stable-stat-label">Prestige</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-season">A.1</div><div class="stable-stat-label">Saison</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-week">S.1</div><div class="stable-stat-label">Semaine</div></div>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <div class="qa-card" onclick="showScreen('market')"><div class="qa-icon">🛒</div><div class="qa-title">Ventes</div></div>
+      <div class="qa-card" onclick="showScreen('training')"><div class="qa-icon">💪</div><div class="qa-title">Entraîner</div></div>
+      <div class="qa-card" onclick="showScreen('race')"><div class="qa-icon">🏇</div><div class="qa-title">Courses</div></div>
+      <div class="qa-card" onclick="showScreen('breeding')"><div class="qa-icon">🧬</div><div class="qa-title">Élevage</div></div>
+      <div class="qa-card" onclick="showStaffModal()"><div class="qa-icon">👔</div><div class="qa-title">Staff</div></div>
+      <div class="qa-card" onclick="advanceWeek()"><div class="qa-icon">⏭️</div><div class="qa-title">Sem.+1</div></div>
+    </div>
+    <div class="horses-section">
+      <div class="horses-section-header"><div class="horses-title">🐴 Mon Écurie</div></div>
+      <div id="hub-horses-list"></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="showScreen('hub')"><div class="nav-icon">🏠</div><div class="nav-label">Écurie</div></div>
+    <div class="nav-item" onclick="showScreen('market')"><div class="nav-icon">🛒</div><div class="nav-label">Ventes</div></div>
+    <div class="nav-item" onclick="showScreen('training')"><div class="nav-icon">💪</div><div class="nav-label">Training</div></div>
+    <div class="nav-item" onclick="showScreen('race')"><div class="nav-icon">🏇</div><div class="nav-label">Courses</div></div>
+    <div class="nav-item" onclick="showScreen('breeding')"><div class="nav-icon">🧬</div><div class="nav-label">Élevage</div></div>
+  </div>
+</div>
+
+<!-- MARKET -->
+<div class="screen" id="screen-market">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Ventes aux enchères</span><div class="money-badge" id="market-money">€15,000</div></div>
+  <div class="scroll-body">
+    <div class="info-box">Achète des yearlings (jeunes, potentiel élevé) ou des chevaux confirmés. Le <strong>score</strong> indique le potentiel à terme.</div>
+    <div class="section-title-sm">🐎 Catalogue de vente</div>
+    <div id="market-list"></div>
+    <div class="divider"></div>
+    <div class="section-title-sm">📤 Vendre</div>
+    <div id="sell-list"></div>
+    <button class="btn-secondary" onclick="refreshMarket()">🔄 Nouveau catalogue</button>
+  </div>
+</div>
+
+<!-- TRAINING -->
+<div class="screen" id="screen-training">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Entraînement</span><div class="money-badge" id="training-money-badge">€15,000</div></div>
+  <div class="scroll-body">
+    <div class="week-banner">
+      <div><div style="font-size:12px;color:var(--muted)">Saison / Semaine</div><div class="week-val" id="training-week">A.1 — S.1</div></div>
+      <div style="text-align:right;font-size:12px;color:var(--muted)">Entretien/sem.<br><strong style="color:var(--green)" id="upkeep-cost">€0</strong></div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Sélectionne un cheval :</div>
+    <div class="horse-selector" id="horse-selector"></div>
+    <div id="selected-horse-stats" class="horse-stat-panel" style="display:none"></div>
+    <div class="section-title-sm">Programme</div>
+    <div class="training-options" id="training-options"></div>
+    <button class="btn-primary" onclick="doTraining()">Lancer la séance</button>
+    <button class="btn-secondary" onclick="showScreen('hub')">← Retour</button>
+  </div>
+</div>
+
+<!-- RACE -->
+<div class="screen" id="screen-race">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Réunion de courses</span><div class="money-badge" id="race-money">€15,000</div></div>
+  <div class="scroll-body" id="race-body"></div>
+</div>
+
+<!-- BREEDING -->
+<div class="screen" id="screen-breeding">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Élevage & Haras</span><div class="money-badge" id="breeding-money">€15,000</div></div>
+  <div class="scroll-body">
+    <div class="info-box">Accouple une <strong>jument</strong> (femelle) et un <strong>étalon</strong> (mâle). Le poulain hérite des gènes des deux parents. Frais de saillie : <strong>€3,000</strong>.</div>
+    <div class="breed-select-row">
+      <div class="breed-slot" id="slot-mare" onclick="openBreedPicker('mare')">
+        <div class="breed-slot-label">Jument ♀</div>
+        <div id="mare-display" style="font-size:13px;color:var(--muted)">Choisir</div>
+      </div>
+      <div class="breed-vs">🧬</div>
+      <div class="breed-slot" id="slot-stallion" onclick="openBreedPicker('stallion')">
+        <div class="breed-slot-label">Étalon ♂</div>
+        <div id="stallion-display" style="font-size:13px;color:var(--muted)">Choisir</div>
+      </div>
+    </div>
+    <div id="breed-preview"></div>
+    <button class="btn-primary" id="btn-breed" onclick="doBreed()" disabled>🧬 Accoupler (€3,000)</button>
+    <div class="divider"></div>
+    <div class="section-title-sm">📜 Poulains à naître</div>
+    <div id="foals-list"></div>
+  </div>
+</div>
+
+<!-- BREED PICKER MODAL -->
+<div class="modal-overlay" id="breed-picker" onclick="closeModal('breed-picker')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title" id="breed-picker-title">Choisir</div>
+    <div id="breed-picker-list"></div>
+    <button class="btn-secondary" onclick="closeModal('breed-picker')">Fermer</button>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="modal-overlay" id="staff-modal" onclick="closeModal('staff-modal')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title">👔 Recruter du personnel</div>
+    <div class="info-box">Le staff améliore le fonctionnement de l'écurie de façon permanente.</div>
+    <div id="staff-list"></div>
+    <button class="btn-secondary" onclick="closeModal('staff-modal')">Fermer</button>
+  </div>
+</div>
+
+<!-- HORSE DETAIL MODAL -->
+<div class="modal-overlay" id="horse-modal" onclick="closeModal('horse-modal')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div id="horse-modal-content"></div>
+    <button class="btn-secondary" onclick="closeModal('horse-modal')">Fermer</button>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+let G = {
+  stable: null, money: 15000, week: 1, season: 1, prestige: 1, totalWins: 0,
+  horses: [], foals: [], staff: [],
+  selectedHorse: null, selectedTraining: null,
+  raceState: 'select', raceResult: null, currentRace: null,
+  marketHorses: [],
+  breedMare: null, breedStallion: null,
+  selectedBet: null, betType: null,
+};
+let selectedStableType = null;
+
+const FIRST_NAMES = ['Éclair','Tempête','Roi','Belle','Flash','Tonnerre','Star','Prince','Dame','Foudre','Cavalier','Étoile','Mistral','Aurore','Titan','Velours','Comète','Château','Vent','Soleil','Diamant','Galop','Prestige','Ombre','Lumière'];
+const LAST_NAMES = ['Noir','d\'Or','du Vent','Royal','Bleu','d\'Argent','de Cœur','Divin','Altier','Express','Levant','Fort','Sauvage','Magique','Suprême','de Feu','Céleste','Majeur'];
+const HORSE_EMOJIS = ['🐴','🐎'];
+const COATS = ['Bai','Alezan','Gris','Noir','Rouan','Isabelle'];
+const ORIGINS = ['France','Irlande','Angleterre','USA','Australie','Japon'];
+
+const TRAINING_OPTIONS = [
+  { id:'speed', name:'Travail Vitesse', icon:'⚡', stat:'speed', cost:0, forma:-10, gain:[2,4] },
+  { id:'endurance', name:'Fond', icon:'🏃', stat:'endurance', cost:0, forma:-12, gain:[2,4] },
+  { id:'technique', name:'Technique', icon:'🎯', stat:'technique', cost:200, forma:-8, gain:[2,3] },
+  { id:'gallop', name:'Grand Galop', icon:'🐎', stat:'speed', cost:300, forma:-18, gain:[3,5] },
+  { id:'jumps', name:'Saut d\'Obstacles', icon:'🚧', stat:'technique', cost:150, forma:-12, gain:[3,4] },
+  { id:'rest', name:'Repos', icon:'🌿', stat:'rest', cost:0, forma:28, gain:[0,0] },
+];
+
+const RACES = [
+  { name:'Prix Débutants', grade:'Maiden', distance:'1400m', surface:'Plat', diff:1, prize:4000, scale:[1,0.35,0.18,0] },
+  { name:'Handicap de Printemps', grade:'Handicap', distance:'1600m', surface:'Plat', diff:2, prize:7000, scale:[1,0.38,0.18,0.05] },
+  { name:'Prix des Obstacles', grade:'Listed', distance:'3200m', surface:'Obstacles', diff:2, prize:9000, scale:[1,0.4,0.18,0.05] },
+  { name:'Grand Prix Régional', grade:'Groupe 3', distance:'2000m', surface:'Plat', diff:3, prize:14000, scale:[1,0.36,0.16,0.06] },
+  { name:'Critérium d\'Automne', grade:'Groupe 2', distance:'2400m', surface:'Plat', diff:4, prize:22000, scale:[1,0.38,0.18,0.06] },
+  { name:'Grande Course Royale', grade:'Groupe 1', distance:'2400m', surface:'Plat', diff:5, prize:40000, scale:[1,0.4,0.2,0.08] },
+];
+
+const STAFF_POOL = [
+  { id:'assistant', emoji:'🎓', name:'Marc Lefèvre', role:'Entraîneur Assistant', effect:'+15% gains d\'entraînement', cost:5000, bought:false },
+  { id:'vet', emoji:'⚕️', name:'Dr. Rousseau', role:'Vétérinaire', effect:'Récupération forme +10/semaine', cost:4000, bought:false },
+  { id:'jockey', emoji:'🏇', name:'Tom Sullivan', role:'Jockey Attitré', effect:'+8% chances en course', cost:6000, bought:false },
+  { id:'stud', emoji:'🧬', name:'Claire Martin', role:'Responsable Haras', effect:'+10 potentiel des poulains', cost:5500, bought:false },
+];
+
+// ============ NAVIGATION ============
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  if (id==='hub') updateHub();
+  if (id==='market') updateMarket();
+  if (id==='training') updateTraining();
+  if (id==='race') updateRace();
+  if (id==='breeding') updateBreeding();
+}
+
+// ============ SETUP ============
+function selectType(t) { selectedStableType = t; document.querySelectorAll('.type-card').forEach(c=>c.classList.remove('selected')); document.getElementById('type-'+t).classList.add('selected'); }
+
+function createStable() {
+  const name = document.getElementById('stable-name-input').value.trim();
+  const owner = document.getElementById('owner-name-input').value.trim();
+  if (!name) { showNotif('⚠️ Nomme ton écurie'); return; }
+  if (!owner) { showNotif('⚠️ Entre ton nom'); return; }
+  if (!selectedStableType) { showNotif('⚠️ Choisis une spécialité'); return; }
+  G.stable = { name, owner, type: selectedStableType };
+  const starter = generateHorse(52, 'M');
+  starter.name = 'Premier Galop'; starter.age = 4;
+  G.horses.push(starter);
+  const mare = generateHorse(50, 'F');
+  G.horses.push(mare);
+  refreshMarketHorses();
+  showNotif('🏇 Écurie fondée ! 1 étalon + 1 jument offerts.');
+  showScreen('hub');
+}
+
+// ============ HORSE GEN ============
+function generateHorse(baseOverall, forceSex, parents) {
+  const ov = baseOverall || rnd(40,75);
+  const sex = forceSex || (Math.random()<0.5 ? 'M':'F');
+  let speed, endurance, technique, potential;
+  if (parents) {
+    const studBonus = G.staff.find(s=>s.id==='stud') ? 10 : 0;
+    speed = clamp(Math.round((parents.m.stats.speed + parents.f.stats.speed)/2) + rnd(-8,12), 30, 95);
+    endurance = clamp(Math.round((parents.m.stats.endurance + parents.f.stats.endurance)/2) + rnd(-8,12), 30, 95);
+    technique = clamp(Math.round((parents.m.stats.technique + parents.f.stats.technique)/2) + rnd(-8,12), 25, 95);
+    potential = clamp(Math.round((parents.m.potential + parents.f.potential)/2) + rnd(0,15) + studBonus, 50, 99);
+  } else {
+    speed = clamp(ov + rnd(-10,10), 30, 90);
+    endurance = clamp(ov + rnd(-10,10), 30, 90);
+    technique = clamp(ov + rnd(-12,12), 25, 90);
+    potential = clamp(ov + rnd(5,25), ov, 95);
+  }
+  return {
+    id: Date.now()+Math.random()+rnd(0,9999),
+    name: FIRST_NAMES[rnd(0,FIRST_NAMES.length-1)] + ' ' + LAST_NAMES[rnd(0,LAST_NAMES.length-1)],
+    emoji: HORSE_EMOJIS[rnd(0,1)],
+    sex, coat: COATS[rnd(0,COATS.length-1)], origin: ORIGINS[rnd(0,ORIGINS.length-1)],
+    age: parents ? 2 : rnd(3,8),
+    stats: { speed, endurance, technique },
+    forma: rnd(65,100), wins:0, races:0, earnings:0, potential,
+    price: Math.round((speed+endurance+technique)*55 + rnd(-1000,2000)),
+    sire: parents ? parents.m.name : null,
+    dam: parents ? parents.f.name : null,
+  };
+}
+
+function calcOverall(h) { return Math.round((h.stats.speed+h.stats.endurance+h.stats.technique)/3); }
+function starRating(pot) { const s = Math.min(5, Math.max(1, Math.round(pot/20))); return '★'.repeat(s)+'☆'.repeat(5-s); }
+
+// ============ HUB ============
+function updateHub() {
+  if (!G.stable) return;
+  document.getElementById('hub-money').textContent = '€'+G.money.toLocaleString();
+  document.getElementById('hub-stable-name').textContent = G.stable.name;
+  document.getElementById('hub-stable-meta').textContent = G.stable.owner+' • '+typeName(G.stable.type)+' • '+G.staff.length+' staff';
+  document.getElementById('hub-horses').textContent = G.horses.length;
+  document.getElementById('hub-wins').textContent = G.totalWins;
+  document.getElementById('hub-prestige').textContent = '⭐'.repeat(G.prestige);
+  document.getElementById('hub-season').textContent = 'A.'+G.season;
+  document.getElementById('hub-week').textContent = 'S.'+G.week;
+
+  const list = document.getElementById('hub-horses-list');
+  if (G.horses.length===0) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">🐴</div><div style="font-size:14px">Aucun cheval. Va aux ventes.</div></div>`;
+  } else {
+    list.innerHTML = G.horses.map(h => horseCardHTML(h)).join('');
+  }
+}
+
+function horseCardHTML(h) {
+  const ov = calcOverall(h);
+  return `<div class="horse-card" onclick="showHorseDetail('${h.id}')">
+    <div class="horse-card-row">
+      <div class="horse-emoji">${h.emoji}</div>
+      <div class="horse-info">
+        <div class="horse-name">${h.name} <span style="font-size:12px">${h.sex==='M'?'♂':'♀'}</span></div>
+        <div class="horse-meta">${Math.floor(h.age)} ans • ${h.coat} • ${h.origin} <span class="star-rating">${starRating(h.potential)}</span></div>
+        <div class="horse-record" style="color:var(--green)">${h.wins}V/${h.races}C • Forme: ${h.forma}%${h.sire?' • 📜 '+h.sire.split(' ')[0]+' x '+h.dam.split(' ')[0]:''}</div>
+      </div>
+      <div class="horse-overall">${ov}</div>
+    </div>
+    <div class="mini-bars">
+      ${miniBar('Vitesse',h.stats.speed,'#C9A84C')}
+      ${miniBar('Endurance',h.stats.endurance,'#27AE60')}
+      ${miniBar('Technique',h.stats.technique,'#2980B9')}
+    </div>
+  </div>`;
+}
+
+function miniBar(label,val,color) {
+  return `<div class="mini-bar-row"><div class="mini-bar-label">${label}</div><div class="mini-bar-wrap"><div class="mini-bar-fill" style="width:${val}%;background:${color}"></div></div><div class="mini-bar-val">${val}</div></div>`;
+}
+function typeName(t){ return {flat:'Plat',jumps:'Obstacles',trot:'Trot',mixed:'Mixte'}[t]||t; }
+
+function advanceWeek() {
+  G.week++;
+  if (G.week > 20) { G.week = 1; G.season++; showNotif('🎉 Nouvelle saison ! Année '+G.season); }
+  const upkeep = G.horses.length*250 + G.staff.length*400;
+  G.money -= upkeep;
+  const vetBonus = G.staff.find(s=>s.id==='vet') ? 10 : 0;
+  G.horses.forEach(h => { h.forma = Math.min(100, h.forma+8+vetBonus); h.age += 0.05; });
+  // foals maturing
+  G.foals.forEach(f => { f.weeksLeft--; });
+  const born = G.foals.filter(f => f.weeksLeft<=0);
+  born.forEach(f => { G.horses.push(f.horse); showNotif('🐣 Poulain né : '+f.horse.name+' !'); });
+  G.foals = G.foals.filter(f => f.weeksLeft>0);
+  if (G.money<0) G.money=0;
+  if (born.length===0) showNotif(`⏭️ Semaine ${G.week} — Entretien: -€${upkeep.toLocaleString()}`);
+  updateHub();
+}
+
+function showHorseDetail(id) {
+  const h = G.horses.find(x=>String(x.id)===String(id));
+  if (!h) return;
+  const ov = calcOverall(h);
+  document.getElementById('horse-modal-content').innerHTML = `
+    <div class="modal-title">${h.emoji} ${h.name}</div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-family:'Playfair Display',serif;font-size:40px;font-weight:900;color:var(--green)">${ov}</div>
+      <div style="font-size:13px;color:var(--muted)">Overall • Potentiel ${h.potential} <span class="star-rating">${starRating(h.potential)}</span></div>
+    </div>
+    <div class="horse-stat-panel">
+      ${miniBar('Vitesse',h.stats.speed,'#C9A84C')}
+      ${miniBar('Endurance',h.stats.endurance,'#27AE60')}
+      ${miniBar('Technique',h.stats.technique,'#2980B9')}
+    </div>
+    <div style="font-size:13px;line-height:2;color:var(--text)">
+      <div>${h.sex==='M'?'♂ Mâle (étalon)':'♀ Femelle (jument)'} • ${Math.floor(h.age)} ans</div>
+      <div>🎨 Robe : ${h.coat} • 🌍 ${h.origin}</div>
+      <div>💚 Forme : <strong>${h.forma}%</strong></div>
+      <div>🏆 Palmarès : ${h.wins}V / ${h.races}C</div>
+      <div>💰 Gains carrière : €${h.earnings.toLocaleString()}</div>
+      ${h.sire ? `<div>📜 Lignée : ${h.sire} × ${h.dam}</div>` : '<div>📜 Lignée : Inconnue</div>'}
+    </div>
+  `;
+  document.getElementById('horse-modal').classList.add('show');
+}
+
+// ============ MARKET ============
+function refreshMarketHorses() {
+  G.marketHorses = [];
+  for (let i=0;i<3;i++) { const y = generateHorse(rnd(45,70), Math.random()<0.5?'M':'F'); y.age=2; y.isYearling=true; y.price = Math.round(y.potential*100 + rnd(-500,1500)); G.marketHorses.push(y); }
+  for (let i=0;i<3;i++) { G.marketHorses.push(generateHorse(rnd(50,80))); }
+}
+
+function updateMarket() {
+  if (G.marketHorses.length===0) refreshMarketHorses();
+  document.getElementById('market-money').textContent = '€'+G.money.toLocaleString();
+  document.getElementById('market-list').innerHTML = G.marketHorses.map(h => {
+    const ov = calcOverall(h);
+    const afford = G.money>=h.price;
+    return `<div class="market-horse-card">
+      <div class="market-horse-row">
+        <div style="font-size:34px">${h.emoji}</div>
+        <div class="market-horse-info">
+          <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700">${h.name} ${h.sex==='M'?'♂':'♀'}</div>
+          <div style="font-size:11px;color:var(--muted)">${Math.floor(h.age)} ans • ${h.coat} ${h.isYearling?'• <span style="color:var(--purple)">Yearling</span>':''}</div>
+          <div style="margin-top:5px">
+            <span class="tag tag-gold">⚡${h.stats.speed}</span>
+            <span class="tag tag-green">💪${h.stats.endurance}</span>
+            <span class="tag tag-blue">🎯${h.stats.technique}</span>
+          </div>
+        </div>
+        <div>
+          <div class="market-horse-price">€${h.price.toLocaleString()}</div>
+          <div class="market-horse-potential">OVR ${ov}</div>
+          <div class="market-horse-potential"><span class="star-rating">${starRating(h.potential)}</span></div>
+        </div>
+      </div>
+      <button class="${afford?'btn-gold':'btn-secondary'}" onclick="buyHorse('${h.id}')" style="margin:0" ${!afford?'disabled':''}>${afford?'🛒 Acheter':'❌ Budget insuffisant'}</button>
+    </div>`;
+  }).join('');
+
+  document.getElementById('sell-list').innerHTML = G.horses.length===0 ? `<div style="color:var(--muted);font-size:13px">Rien à vendre.</div>` : G.horses.map(h => {
+    const sp = Math.round((h.stats.speed+h.stats.endurance+h.stats.technique)*50 + h.wins*1500);
+    return `<div class="market-horse-card" style="border:1px solid #f0d0d0">
+      <div class="market-horse-row" style="margin-bottom:8px">
+        <div style="font-size:26px">${h.emoji}</div>
+        <div class="market-horse-info"><div style="font-weight:700;font-size:14px">${h.name}</div><div style="font-size:11px;color:var(--muted)">${h.wins}V/${h.races}C</div></div>
+        <div class="market-horse-price" style="color:var(--red)">+€${sp.toLocaleString()}</div>
+      </div>
+      <button class="btn-danger" onclick="sellHorse('${h.id}',${sp})">Vendre</button>
+    </div>`;
+  }).join('');
+}
+
+function buyHorse(id) {
+  const h = G.marketHorses.find(x=>String(x.id)===String(id));
+  if (!h || G.money<h.price) { showNotif('❌ Budget insuffisant'); return; }
+  G.money -= h.price; G.horses.push(h);
+  G.marketHorses = G.marketHorses.filter(x=>String(x.id)!==String(id));
+  showNotif(`🐴 ${h.name} acheté !`); updateMarket();
+}
+function sellHorse(id,price) {
+  const h = G.horses.find(x=>String(x.id)===String(id)); if(!h) return;
+  G.horses = G.horses.filter(x=>String(x.id)!==String(id)); G.money += price;
+  showNotif(`💰 ${h.name} vendu €${price.toLocaleString()}`); updateMarket();
+}
+function refreshMarket() { refreshMarketHorses(); updateMarket(); showNotif('🔄 Nouveau catalogue'); }
+
+// ============ TRAINING ============
+function updateTraining() {
+  document.getElementById('training-week').textContent = 'A.'+G.season+' — S.'+G.week;
+  document.getElementById('training-money-badge').textContent = '€'+G.money.toLocaleString();
+  document.getElementById('upkeep-cost').textContent = '€'+(G.horses.length*250+G.staff.length*400).toLocaleString();
+  const sel = document.getElementById('horse-selector');
+  sel.innerHTML = G.horses.length===0 ? '<div style="color:var(--muted);font-size:13px">Aucun cheval</div>' :
+    G.horses.map(h => `<div class="horse-pill ${G.selectedHorse?.id===h.id?'selected':''}" onclick="selTrainHorse('${h.id}')">${h.emoji} ${h.name.split(' ')[0]}</div>`).join('');
+  const stEl = document.getElementById('selected-horse-stats');
+  if (G.selectedHorse) {
+    const h = G.selectedHorse;
+    stEl.style.display='block';
+    stEl.innerHTML = `<div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:10px">${h.emoji} ${h.name} — OVR ${calcOverall(h)}</div>
+      ${miniBar('Vitesse',h.stats.speed,'#C9A84C')}${miniBar('Endurance',h.stats.endurance,'#27AE60')}${miniBar('Technique',h.stats.technique,'#2980B9')}
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">Forme: <strong style="color:${h.forma>60?'var(--green)':h.forma>30?'#F5A623':'var(--red)'}">${h.forma}%</strong> • Potentiel max: ${h.potential}</div>`;
+  } else stEl.style.display='none';
+  document.getElementById('training-options').innerHTML = TRAINING_OPTIONS.map(t => `
+    <div class="training-opt ${G.selectedTraining===t.id?'selected':''}" onclick="selTrainOpt('${t.id}')">
+      <div class="training-opt-icon">${t.icon}</div><div class="training-opt-name">${t.name}</div>
+      <div class="training-opt-bonus">${t.stat==='rest'?'+28 forme':'+'+t.gain[0]+'-'+t.gain[1]+' '+statFr(t.stat)}</div>
+      <div class="training-opt-cost">${t.forma>0?'💚 +'+t.forma:'❤️ '+t.forma} forme${t.cost>0?' • €'+t.cost:''}</div>
+    </div>`).join('');
+}
+function statFr(s){ return {speed:'Vit.',endurance:'End.',technique:'Tech.'}[s]||s; }
+function selTrainHorse(id){ G.selectedHorse = G.horses.find(h=>String(h.id)===String(id)); updateTraining(); }
+function selTrainOpt(id){ G.selectedTraining = id; updateTraining(); }
+
+function doTraining() {
+  if (!G.selectedHorse) { showNotif('⚠️ Choisis un cheval'); return; }
+  if (!G.selectedTraining) { showNotif('⚠️ Choisis un programme'); return; }
+  const h = G.selectedHorse, t = TRAINING_OPTIONS.find(x=>x.id===G.selectedTraining);
+  if (G.money<t.cost) { showNotif('❌ Budget insuffisant'); return; }
+  G.money -= t.cost;
+  if (t.stat==='rest') { h.forma = Math.min(100,h.forma+28); showNotif(`🌿 ${h.name} repos — Forme ${h.forma}%`); }
+  else {
+    if (h.forma<20) { showNotif(`⚠️ ${h.name} épuisé ! Repos requis.`); return; }
+    const assistBonus = G.staff.find(s=>s.id==='assistant') ? 1.15 : 1;
+    let gain = Math.round(rnd(t.gain[0],t.gain[1]) * assistBonus);
+    const cap = h.potential;
+    if (h.stats[t.stat] >= cap) { showNotif(`⚠️ ${statFr(t.stat)} au max du potentiel (${cap})`); gain = 0; }
+    h.stats[t.stat] = Math.min(cap, h.stats[t.stat]+gain);
+    h.forma = Math.max(10, h.forma+t.forma);
+    showNotif(`${t.icon} ${h.name} — +${gain} ${statFr(t.stat)}`);
+  }
+  G.selectedTraining = null; updateTraining(); updateHub();
+}
+
+// ============ RACE ============
+function updateRace() {
+  document.getElementById('race-money').textContent = '€'+G.money.toLocaleString();
+  if (G.raceState==='select') renderRaceSelect();
+  else if (G.raceState==='result') renderRaceResult();
+}
+
+function renderRaceSelect() {
+  const body = document.getElementById('race-body');
+  if (G.horses.length===0) { body.innerHTML = `<div class="empty-state"><div class="empty-icon">🏇</div><div>Achète un cheval pour courir.</div></div>`; return; }
+  body.innerHTML = `
+    <div class="section-title-sm">🐎 Engager un cheval</div>
+    <div class="horse-selector" id="race-horse-selector" style="margin-bottom:16px"></div>
+    <div id="race-horse-preview"></div>
+    <div class="section-title-sm">📋 Réunion du jour</div>
+    <div id="race-list"></div>`;
+  renderRaceHorseSelector(); renderRaceList();
+}
+
+function renderRaceHorseSelector() {
+  const sel = document.getElementById('race-horse-selector'); if (!sel) return;
+  sel.innerHTML = G.horses.map(h => `<div class="horse-pill ${G.selectedHorse?.id===h.id?'selected':''}" onclick="selRaceHorse('${h.id}')">${h.emoji} ${h.name.split(' ')[0]}</div>`).join('');
+  const pv = document.getElementById('race-horse-preview');
+  if (G.selectedHorse && pv) {
+    const h = G.selectedHorse;
+    pv.innerHTML = `<div class="horse-stat-panel" style="margin-bottom:16px">
+      <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:8px">${h.emoji} ${h.name} — OVR ${calcOverall(h)}</div>
+      ${miniBar('Vitesse',h.stats.speed,'#C9A84C')}${miniBar('Endurance',h.stats.endurance,'#27AE60')}${miniBar('Technique',h.stats.technique,'#2980B9')}
+      <div style="margin-top:8px;font-size:12px;color:var(--muted)">Forme: <strong style="color:${h.forma>60?'var(--green)':'#F5A623'}">${h.forma}%</strong> • ${h.wins}V/${h.races}C</div>
+      ${h.forma<25?'<div style="color:var(--red);font-size:12px;margin-top:4px">⚠️ Forme faible — performances réduites</div>':''}
+    </div>`;
+  }
+}
+function selRaceHorse(id){ G.selectedHorse = G.horses.find(h=>String(h.id)===String(id)); renderRaceHorseSelector(); renderRaceList(); }
+
+function renderRaceList() {
+  const list = document.getElementById('race-list'); if (!list) return;
+  list.innerHTML = RACES.map((r,i) => {
+    const avail = G.selectedHorse;
+    const myOv = avail ? calcOverall(G.selectedHorse) : 0;
+    const odds = avail ? calcOdds(myOv, r.diff) : '—';
+    return `<div class="racecard" style="cursor:${avail?'pointer':'default'};opacity:${avail?1:0.55}" onclick="${avail?`engageRace(${i})`:''}">
+      <div class="racecard-header">
+        <span class="racecard-grade">${r.grade}</span>
+        <div class="racecard-name">${r.name}</div>
+        <div class="racecard-details">📏 ${r.distance} • 🏟️ ${r.surface} • Difficulté ${'⭐'.repeat(r.diff)}</div>
+        <div class="racecard-prize">€${r.prize.toLocaleString()}</div>
+      </div>
+      ${avail ? `<div class="runner-row mine"><div class="runner-num">${rnd(1,9)}</div><div class="runner-name">${G.selectedHorse.name} (toi)</div><div class="runner-odds">${odds}/1</div></div>
+      <div class="runner-row"><div class="runner-num">${rnd(1,9)}</div><div class="runner-name">${FIRST_NAMES[rnd(0,FIRST_NAMES.length-1)]} ${LAST_NAMES[rnd(0,LAST_NAMES.length-1)]}</div><div class="runner-odds">${rnd(2,8)}/1</div></div>
+      <div class="runner-row"><div class="runner-num">${rnd(1,9)}</div><div class="runner-name">${FIRST_NAMES[rnd(0,FIRST_NAMES.length-1)]} ${LAST_NAMES[rnd(0,LAST_NAMES.length-1)]}</div><div class="runner-odds">${rnd(2,12)}/1</div></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function calcOdds(ov, diff) {
+  const base = 6 + (diff-1)*3 - (ov-55)/8;
+  return Math.max(1.5, Math.round(base*10)/10);
+}
+
+async function engageRace(idx) {
+  if (!G.selectedHorse) { showNotif('⚠️ Choisis un cheval'); return; }
+  const h = G.selectedHorse, race = RACES[idx];
+
+  // Betting prompt
+  const myOv = calcOverall(h);
+  const odds = calcOdds(myOv, race.diff);
+  G.currentRace = race; G.currentOdds = odds;
+  G.raceState = 'running';
+
+  const body = document.getElementById('race-body');
+  body.innerHTML = `
+    <div class="bet-box">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">🎰 Parier sur ${h.name.split(' ')[0]} ?</div>
+      <div style="font-size:12px;color:var(--muted)">Cote : ${odds}/1 — Mise optionnelle</div>
+      <div class="bet-options">
+        <div class="bet-chip" onclick="setBet(0,this)">Pas de pari</div>
+        <div class="bet-chip" onclick="setBet(500,this)">€500</div>
+        <div class="bet-chip" onclick="setBet(1000,this)">€1,000</div>
+        <div class="bet-chip" onclick="setBet(2000,this)">€2,000</div>
+      </div>
+    </div>
+    <button class="btn-primary" id="confirm-race" onclick="runRace(${idx})">🏁 Lancer la course</button>
+    <button class="btn-secondary" onclick="cancelRace()">Annuler</button>
+  `;
+  G.selectedBet = 0;
+}
+
+function setBet(amount, el) {
+  if (amount > G.money) { showNotif('❌ Mise trop élevée'); return; }
+  G.selectedBet = amount;
+  document.querySelectorAll('.bet-chip').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function cancelRace() { G.raceState='select'; renderRaceSelect(); }
+
+async function runRace(idx) {
+  const h = G.selectedHorse, race = RACES[idx];
+  const bet = G.selectedBet || 0;
+  if (bet > 0) G.money -= bet;
+
+  const body = document.getElementById('race-body');
+  body.innerHTML = `
+    <div class="racecard" style="margin-bottom:14px"><span class="racecard-grade">${race.grade}</span><div class="racecard-name">${race.name}</div><div class="racecard-details">${race.distance} • ${race.surface}</div></div>
+    <div class="race-log" id="race-log"><div style="color:rgba(255,255,255,0.4)">🔔 Les partants sont sous les ordres du starter...</div></div>`;
+
+  const ov = calcOverall(h);
+  const formaBonus = (h.forma-50)/100;
+  const jockeyBonus = G.staff.find(s=>s.id==='jockey') ? 0.08 : 0;
+  const effOv = ov * (1 + formaBonus*0.2 + jockeyBonus);
+  const diffPen = (race.diff-1)*5;
+  const winChance = clamp(0.5 + (effOv-60-diffPen)/80, 0.08, 0.85);
+
+  const rand = Math.random();
+  let pos;
+  if (rand < winChance*0.5) pos=1;
+  else if (rand < winChance*0.75) pos=2;
+  else if (rand < winChance*0.9) pos=3;
+  else pos = rnd(4,8);
+
+  const commentary = raceCommentary(h, race, pos);
+  for (let i=0;i<commentary.length;i++) {
+    await delay(1000);
+    const log = document.getElementById('race-log');
+    if (log) { const line=document.createElement('div'); line.className='race-log-line '+(i===commentary.length-1?(pos===1?'win':pos<=3?'podium':'lose'):''); line.textContent=commentary[i]; log.appendChild(line); log.scrollTop=log.scrollHeight; }
+  }
+  await delay(800);
+
+  const prize = Math.round(race.prize * (race.scale[pos-1]||0));
+  G.money += prize;
+  h.races++; h.earnings += prize;
+  if (pos===1) { h.wins++; G.totalWins++; if (G.totalWins%3===0) G.prestige=Math.min(5,G.prestige+1); }
+  h.forma = Math.max(15, h.forma-22);
+
+  // bet payout
+  let betWin = 0;
+  if (bet>0 && pos===1) { betWin = Math.round(bet * G.currentOdds); G.money += betWin; }
+
+  G.raceResult = { pos, prize, race, bet, betWin };
+  G.raceState = 'result';
+  renderRaceResult();
+}
+
+function raceCommentary(h, race, pos) {
+  const n = h.name;
+  const lines = [`🏁 C'est parti ! ${n} s'installe dans le peloton`];
+  if (parseInt(race.distance)>=2000) lines.push(`📍 À mi-parcours, ${n} reste bien placé, le jockey patiente`);
+  if (race.surface==='Obstacles') lines.push(`🚧 ${n} franchit les obstacles avec ${pos<=3?'aisance':'difficulté'}`);
+  if (pos<=2) { lines.push(`⚡ Dernière ligne droite — ${n} déboule à l'extérieur !`); lines.push(pos===1?`🏆 VICTOIRE ! ${n} s'impose sur le fil !`:`🥈 ${n} échoue de peu, 2e place !`); }
+  else if (pos===3) { lines.push(`💪 ${n} revient fort dans les derniers mètres`); lines.push(`🥉 ${n} accroche le podium en 3e !`); }
+  else { lines.push(`😤 ${n} ne peut pas suivre le rythme imposé`); lines.push(`❌ ${n} termine ${pos}e. À revoir.`); }
+  return lines;
+}
+
+function renderRaceResult() {
+  const r = G.raceResult, body = document.getElementById('race-body');
+  const posLabel = r.pos===1?'1ère place 🏆':r.pos===2?'2ème place 🥈':r.pos===3?'3ème place 🥉':`${r.pos}ème place`;
+  const cls = r.pos===1?'first':r.pos<=3?'podium':'lose';
+  body.innerHTML = `
+    <div class="result-banner ${cls}">
+      <div class="result-pos ${cls}">${r.pos===1?'🏆':r.pos===2?'🥈':r.pos===3?'🥉':'💨'}</div>
+      <div class="result-sub ${cls}">${posLabel} — ${r.race.name}</div>
+      <div class="result-prize ${cls}">${r.prize>0?'+€'+r.prize.toLocaleString():'Aucun gain'}</div>
+    </div>
+    ${r.bet>0 ? `<div class="bet-box" style="text-align:center">${r.betWin>0?`<div style="color:var(--green);font-weight:700">🎰 Pari gagné ! +€${r.betWin.toLocaleString()}</div>`:`<div style="color:var(--red);font-weight:700">🎰 Pari perdu : -€${r.bet.toLocaleString()}</div>`}</div>` : ''}
+    <div style="background:var(--panel);border-radius:12px;padding:14px;border:1px solid var(--border);margin-bottom:14px;font-size:13px;line-height:2">
+      <div>💰 Budget : <strong>€${G.money.toLocaleString()}</strong></div>
+      <div>🐴 ${G.selectedHorse?.name} — ${G.selectedHorse?.wins}V/${G.selectedHorse?.races}C</div>
+      <div>💚 Forme : ${G.selectedHorse?.forma}%</div>
+      <div>🏆 Prestige : ${'⭐'.repeat(G.prestige)}</div>
+    </div>
+    <button class="btn-primary" onclick="newRace()">🏇 Nouvelle course</button>
+    <button class="btn-secondary" onclick="showScreen('hub')">← Écurie</button>`;
+  document.getElementById('race-money').textContent = '€'+G.money.toLocaleString();
+}
+
+function newRace() { G.raceState='select'; G.raceResult=null; G.selectedHorse=null; G.selectedBet=null; renderRaceSelect(); }
+
+// ============ BREEDING ============
+function updateBreeding() {
+  document.getElementById('breeding-money').textContent = '€'+G.money.toLocaleString();
+  document.getElementById('mare-display').innerHTML = G.breedMare ? `${G.breedMare.emoji} <strong>${G.breedMare.name.split(' ')[0]}</strong><br><span style="font-size:11px;color:var(--muted)">OVR ${calcOverall(G.breedMare)}</span>` : 'Choisir';
+  document.getElementById('stallion-display').innerHTML = G.breedStallion ? `${G.breedStallion.emoji} <strong>${G.breedStallion.name.split(' ')[0]}</strong><br><span style="font-size:11px;color:var(--muted)">OVR ${calcOverall(G.breedStallion)}</span>` : 'Choisir';
+  document.getElementById('slot-mare').classList.toggle('filled', !!G.breedMare);
+  document.getElementById('slot-stallion').classList.toggle('filled', !!G.breedStallion);
+
+  const preview = document.getElementById('breed-preview');
+  if (G.breedMare && G.breedStallion) {
+    const studBonus = G.staff.find(s=>s.id==='stud') ? 10 : 0;
+    const expSpeed = Math.round((G.breedMare.stats.speed+G.breedStallion.stats.speed)/2);
+    const expEnd = Math.round((G.breedMare.stats.endurance+G.breedStallion.stats.endurance)/2);
+    const expTech = Math.round((G.breedMare.stats.technique+G.breedStallion.stats.technique)/2);
+    const expPot = Math.round((G.breedMare.potential+G.breedStallion.potential)/2)+studBonus;
+    preview.innerHTML = `<div class="horse-stat-panel">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🔮 Poulain estimé (moyenne + variation)</div>
+      ${miniBar('Vitesse','~'+expSpeed,'#C9A84C').replace('width:~'+expSpeed,'width:'+expSpeed)}
+      ${miniBar('Endurance','~'+expEnd,'#27AE60').replace('width:~'+expEnd,'width:'+expEnd)}
+      ${miniBar('Technique','~'+expTech,'#2980B9').replace('width:~'+expTech,'width:'+expTech)}
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">Potentiel attendu : ~${expPot} <span class="star-rating">${starRating(expPot)}</span>${studBonus?' (bonus haras +10)':''}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">⏳ Gestation : 4 semaines</div>
+    </div>`;
+    document.getElementById('btn-breed').disabled = false;
+  } else { preview.innerHTML=''; document.getElementById('btn-breed').disabled = true; }
+
+  const foals = document.getElementById('foals-list');
+  foals.innerHTML = G.foals.length===0 ? `<div style="color:var(--muted);font-size:13px">Aucun poulain en gestation.</div>` :
+    G.foals.map(f => `<div class="staff-card"><div style="font-weight:700;font-size:14px">${f.horse.emoji} ${f.horse.name}</div><div style="font-size:12px;color:var(--muted)">📜 ${f.horse.sire.split(' ')[0]} × ${f.horse.dam.split(' ')[0]} • Naissance dans ${f.weeksLeft} sem.</div></div>`).join('');
+}
+
+function openBreedPicker(type) {
+  const wantSex = type==='mare' ? 'F' : 'M';
+  const eligible = G.horses.filter(h => h.sex===wantSex && h.age>=3);
+  document.getElementById('breed-picker-title').textContent = type==='mare'?'Choisir une jument ♀':'Choisir un étalon ♂';
+  const list = document.getElementById('breed-picker-list');
+  list.innerHTML = eligible.length===0 ? `<div class="empty-state"><div class="empty-icon">${wantSex==='F'?'♀':'♂'}</div><div>Aucun ${wantSex==='F'?'jument':'étalon'} de 3 ans+ disponible.</div></div>` :
+    eligible.map(h => `<div class="horse-card" onclick="pickBreed('${type}','${h.id}')">${horseCardInner(h)}</div>`).join('');
+  document.getElementById('breed-picker').classList.add('show');
+}
+function horseCardInner(h) {
+  return `<div class="horse-card-row"><div class="horse-emoji">${h.emoji}</div><div class="horse-info"><div class="horse-name">${h.name} ${h.sex==='M'?'♂':'♀'}</div><div class="horse-meta">${Math.floor(h.age)} ans • OVR ${calcOverall(h)} <span class="star-rating">${starRating(h.potential)}</span></div></div><div class="horse-overall">${calcOverall(h)}</div></div>`;
+}
+function pickBreed(type, id) {
+  const h = G.horses.find(x=>String(x.id)===String(id));
+  if (type==='mare') G.breedMare = h; else G.breedStallion = h;
+  closeModal('breed-picker'); updateBreeding();
+}
+
+function doBreed() {
+  if (!G.breedMare || !G.breedStallion) return;
+  if (G.money < 3000) { showNotif('❌ Frais de saillie : €3,000 requis'); return; }
+  G.money -= 3000;
+  const foal = generateHorse(null, null, { m: G.breedStallion, f: G.breedMare });
+  G.foals.push({ horse: foal, weeksLeft: 4 });
+  showNotif(`🧬 Saillie réussie ! ${foal.name} naîtra dans 4 semaines.`);
+  G.breedMare = null; G.breedStallion = null;
+  updateBreeding();
+}
+
+// ============ STAFF ============
+function showStaffModal() {
+  document.getElementById('staff-list').innerHTML = STAFF_POOL.map(s => {
+    const owned = G.staff.find(x=>x.id===s.id);
+    return `<div class="staff-card">
+      <div class="staff-header"><div class="staff-emoji">${s.emoji}</div><div><div class="staff-name">${s.name}</div><div class="staff-role">${s.role}</div></div></div>
+      <div class="staff-effect">✓ ${s.effect}</div>
+      ${owned ? `<div style="color:var(--green);font-size:13px;font-weight:600">✅ Employé (€400/sem.)</div>` : `<button class="btn-gold" onclick="hireStaff('${s.id}')" style="margin:0" ${G.money<s.cost?'disabled':''}>${G.money>=s.cost?'Embaucher — €'+s.cost.toLocaleString():'❌ Budget insuffisant'}</button>`}
+    </div>`;
+  }).join('');
+  document.getElementById('staff-modal').classList.add('show');
+}
+function hireStaff(id) {
+  const s = STAFF_POOL.find(x=>x.id===id);
+  if (!s || G.money<s.cost) { showNotif('❌ Budget insuffisant'); return; }
+  G.money -= s.cost; G.staff.push({...s});
+  showNotif(`👔 ${s.name} embauché !`); showStaffModal(); updateHub();
+}
+
+// ============ UTILS ============
+function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function showNotif(msg){ const el=document.getElementById('notification'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2800); }
+</script>
+</body>
+</html>
