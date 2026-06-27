@@ -1,5 +1,5 @@
 /* Service Worker — Turf Manager France (PWA offline) */
-const CACHE = 'turf-manager-v2';
+const CACHE = 'turf-manager-v3';
 
 // App shell pré-caché à l'installation (léger). Les gros PNG de fond sont
 // mis en cache à la volée au premier usage (cache runtime ci-dessous).

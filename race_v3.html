@@ -30,7 +30,7 @@ body {
 canvas { display:block; width:100%; }
 .comment-box { width:100%; background:rgba(0,0,0,0.45); border-left:3px solid #C9A84C; border-radius:0 8px 8px 0; padding:10px 14px; margin-bottom:10px; min-height:44px; display:flex; align-items:center; }
 .comment-text { font-size:13px; color:#E8C96A; font-style:italic; line-height:1.5; }
-.live-box { width:100%; background:rgba(0,0,0,0.3); border-radius:10px; padding:10px 12px; border:1px solid rgba(255,255,255,0.07); margin-bottom:10px; }
+.live-box { display:none; }  /* classement désormais dessiné dans le canvas (bas-gauche) */
 .live-title { font-size:9px; color:rgba(255,255,255,0.35); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:7px; }
 .live-runner { display:flex; align-items:center; gap:7px; padding:3px 0; }
 .live-num { width:18px; height:18px; border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:800; flex-shrink:0; }
@@ -41,6 +41,11 @@ canvas { display:block; width:100%; }
 .controls { position:absolute; right:8px; bottom:8px; display:flex; gap:6px; z-index:5; }
 .btn-speed { background:rgba(0,0,0,0.55); border:1px solid rgba(255,255,255,0.2); border-radius:8px; padding:6px 10px; color:rgba(255,255,255,0.75); font-size:11px; font-weight:700; cursor:pointer; transition:all 0.2s; }
 .btn-speed.active { background:rgba(201,168,76,0.85); border-color:#C9A84C; color:#0D2B1A; }
+/* ── HUD in-scène (boutons cliquables superposés au canvas) ─────────────────── */
+.hud-btn { position:absolute; z-index:6; background:rgba(0,0,0,0.55); border:1px solid rgba(255,255,255,0.3); color:#fff; cursor:pointer; font-weight:800; -webkit-tap-highlight-color:transparent; }
+.hud-speed { top:8px; left:8px; padding:6px 12px; border-radius:9px; font-size:13px; }
+.hud-power { top:8px; right:8px; width:40px; height:40px; border-radius:50%; font-size:18px; background:rgba(201,168,76,0.9); color:#0D2B1A; border-color:#E8C96A; box-shadow:0 2px 8px rgba(0,0,0,0.4); }
+.hud-power:active { transform:scale(0.9); }
 .btn-primary { width:100%; background:linear-gradient(135deg,#C9A84C,#A8882A); color:#0D2B1A; border:none; border-radius:10px; padding:14px; font-size:15px; font-weight:800; cursor:pointer; margin-bottom:8px; }
 .btn-secondary { width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); border-radius:10px; padding:12px; font-size:13px; cursor:pointer; }
 /* ── HUD : barre de progression de course ──────────────────────────────────── */
@@ -83,11 +88,9 @@ canvas { display:block; width:100%; }
 
 <div class="canvas-wrap">
   <canvas id="raceCanvas" width="800" height="380"></canvas>
-  <div class="controls">
-    <button class="btn-speed active" id="spd1" onclick="setSpeed(1)">×1</button>
-    <button class="btn-speed" id="spd2" onclick="setSpeed(2)">×2</button>
-    <button class="btn-speed" id="spd4" onclick="setSpeed(4)">×4</button>
-  </div>
+  <button class="hud-btn hud-speed" id="hud-speed" onclick="cycleSpeed()">» ×1</button>
+  <button class="hud-btn hud-power" id="hud-power" title="Coup de rein"
+          onmousedown="powerBoost()" ontouchstart="powerBoost();return false;">⚡</button>
   <div class="result" id="result">
     <div class="result-title" id="res-title"></div>
     <div class="podium">
@@ -119,17 +122,20 @@ const ctx = C.getContext('2d');
 const W = C.width, H = C.height;
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
-// ── BANDES VERTICALES (SO-Touch) : haut 55% décor, ~10% sol, bas 35% piste ───
-const SKY_FRAC  = 0.55;                 // bas du décor / ligne d'horizon
-const HORIZON   = H * SKY_FRAC;         // 0.55H (était 0.36H)
-const TRACK_TOP = 0.62;                 // lane la plus LOINTAINE (petite, sombre, haute)
-const TRACK_BOT = 0.94;                 // lane la plus PROCHE (grande, claire, basse)
+// FOND 100% STATIQUE (réf. Starters Orders Touch). Rien ne défile : les chevaux
+// TRAVERSENT l'écran de gauche (X_START) à droite (X_END). Bandes verticales :
+const SKY_BOT  = 0.15;   // ciel              [0    .. 0.15]
+const HOR_BOT  = 0.20;   // horizon/tribune   [0.15 .. 0.20]
+const RAIL_U   = 0.21;   // rail supérieur    (bande 0.20 .. 0.22)
+const RACE_TOP = 0.30;   // haut zone course  (herbe arrière 0.22 .. 0.30)
+const RACE_BOT = 0.60;   // bas zone course   [0.30 .. 0.60] ← les chevaux courent ici
+const RAIL_L   = 0.61;   // rail inférieur    (bande 0.60 .. 0.62)
+//                       herbe avant 0.62 .. 1.00 (premier plan)
 
-// ── CAMÉRA : chevaux centrés à l'écran, c'est le fond qui défile ─────────────
-const CAM_XMIN = 0.15, CAM_XMAX = 0.85; // bande X à l'écran
-const CAM_LEAD = 0.66;                   // X du leader (droite-centre)
-const CAM_SPAN = 0.10;                   // écart-standing qui remplit la bande
-const GAP_PER_POS = 0.011;               // 1 « longueur » de standing
+// ── CHEVAUX : traversent l'écran (pas de caméra suiveuse, pas de défilement) ──
+const X_START = 0.05, X_END = 0.95;     // départ → arrivée en X
+const GAP_PER_POS = 0.011;              // 1 « longueur » de standing (classement, photo-finish)
+const GAP_X       = 0.034;              // 1 longueur ≈ 3.4% de largeur d'écran
 
 // ── 8 FRAMES GALOP (angles membres en degrés, basé Muybridge) ─────────────────
 const FRAMES = [
@@ -185,13 +191,14 @@ const RUNNERS = (function () {
   return DEFAULT_RUNNERS;
 })();
 
-// Lanes de profondeur dans la zone basse. i=0 → fond (loin), dernier → proche.
-// Déterministe (pas de Math.random) → ?frame reproductible.
+// Lanes DANS LA ZONE DE COURSE [RACE_TOP..RACE_BOT]. i=0 → fond (haut, petit),
+// dernier → premier plan (bas, grand). Déterministe → ?frame reproductible.
+const LANE_T = RACE_TOP + 0.025, LANE_B = RACE_BOT - 0.025;
 const LANES = RUNNERS.map((r, i) => {
-  const t = i / (RUNNERS.length - 1);             // 0=loin .. 1=proche
-  const eased = Math.pow(t, 1.2);                 // lanes proches plus écartées (perspective)
-  const jitter = (((i * 67) % 13) - 6) * 0.0010;  // ±~0.006, déterministe
-  return TRACK_TOP + (TRACK_BOT - TRACK_TOP) * eased + jitter;
+  const t = i / (RUNNERS.length - 1);             // 0=fond .. 1=proche
+  const eased = Math.pow(t, 1.05);
+  const jitter = (((i * 67) % 13) - 6) * 0.0008;  // ±~0.005, déterministe
+  return LANE_T + (LANE_B - LANE_T) * eased + jitter;
 });
 
 // Ordre de dessin par profondeur — constant (LANES ne change pas) → précalculé 1×.
@@ -217,14 +224,16 @@ function leaderS(p) {
   return m;
 }
 
-// standing → X écran dans la bande [CAM_XMIN..CAM_XMAX] ; le leader est fixé à
-// CAM_LEAD. Compresseur doux : un leader échappé ne pousse pas le peloton hors champ.
+// Position X écran : le leader traverse de X_START à X_END selon la progression ;
+// chaque cheval est en retrait selon son écart en longueurs. Fond statique → les
+// chevaux traversent l'écran de gauche à droite. + boost cosmétique du joueur.
 function runnerXPct(r, p) {
-  const ls   = (p === progress) ? _leaderS : leaderS(p);
-  const g    = (ls - runnerS(r, p)) / GAP_PER_POS;            // écart en longueurs, ≥0
-  const span = CAM_SPAN / GAP_PER_POS;                        // longueurs qui remplissent la bande
-  const back = (g / span) * (CAM_LEAD - CAM_XMIN) / (1 + g * 0.045);
-  return Math.max(CAM_XMIN - 0.05, Math.min(CAM_XMAX, CAM_LEAD - back));
+  const ls = (p === progress) ? _leaderS : leaderS(p);
+  const leaderX = X_START + p * (X_END - X_START);           // le leader avance avec la course
+  const gap = (ls - runnerS(r, p)) / GAP_PER_POS;            // écart en longueurs, ≥0
+  let x = leaderX - gap * GAP_X;
+  if (r.isPlayer) x += _boost * 0.045;                       // coup de rein (cosmétique, ne change pas le résultat)
+  return Math.max(0.01, Math.min(X_END, x));
 }
 
 // Effet virage : intensité 0..1
@@ -233,9 +242,9 @@ function cornerAmt(p) {
   return bell(0.22, 0.09) * 0.9 + bell(0.72, 0.09) * 0.9;
 }
 
-// depth 0 = loin (haut, petit, sombre) .. 1 = proche (bas, grand, clair)
+// depth 0 = fond (haut, petit, sombre) .. 1 = proche (bas, grand, clair)
 function laneDepth(yPct) {
-  return (yPct - TRACK_TOP) / (TRACK_BOT - TRACK_TOP);
+  return (yPct - RACE_TOP) / (RACE_BOT - RACE_TOP);
 }
 
 // ── DESSIN CHEVAL ─────────────────────────────────────────────────────────────
@@ -563,283 +572,135 @@ function _drawHorseBody(ox, oy, s, f, body, silk, cap, trim, isPlayer) {
   drawLeg(ox - 10*s, oy + 10*s, f.fr, legLen, midBody,  legW, s);
 }
 
-// ── FOND ─────────────────────────────────────────────────────────────────────
-let bgOff = 0;
+// ── FOND 100% STATIQUE (réf. Starters Orders Touch) ──────────────────────────
+let bgOff = 0;   // conservé pour compat ; le fond ne défile plus (non utilisé au dessin)
 
-// ── BACKGROUND PHOTO (PNG hippodrome) ─────────────────────────────────────────
-// Switch automatique selon la discipline. Lisible via l'URL pour le futur
-// câblage avec le jeu :  race_v3.html?discipline=trot
-const BG_SRC = {
-  plat:     './bg_longchamp.png.webp',   // Plat       → Longchamp
-  trot:     './bg_vincennes.png.webp',   // Trot       → Vincennes
-  obstacle: './bg_auteuil.png.webp',     // Obstacles  → Auteuil
-  default:  './bg_chantilly.png.webp',   // défaut     → Chantilly
-};
+// Discipline → herbe (plat/obstacle/défaut) ou sable (trot/Vincennes). Plus de PNG.
 function pickDiscipline() {
-  const p = new URLSearchParams(location.search);
-  const raw = (p.get('discipline') || p.get('disc') || '').toLowerCase();
+  const raw = (new URLSearchParams(location.search).get('discipline')
+            || new URLSearchParams(location.search).get('disc') || '').toLowerCase();
   if (raw.includes('plat')) return 'plat';
   if (raw.includes('trot')) return 'trot';
   if (raw.includes('obst')) return 'obstacle';
   return 'default';
 }
 const DISCIPLINE = pickDiscipline();
-let bgReady = false;
-const bgImg = new Image();
-bgImg.onload  = () => { bgReady = true; if (!raceRunning) drawBg(0); };
-bgImg.onerror = () => { bgReady = false; };  // fallback : fond procédural d'origine
-bgImg.src = BG_SRC[DISCIPLINE] || BG_SRC.default;
+const IS_SAND = DISCIPLINE === 'trot';       // Vincennes = sable
+const bgReady = true;                         // compat init (plus d'image à charger)
 
-// Nouveau drawBg : la photo si elle est chargée (+ effets de piste par-dessus),
-// sinon le moteur procédural d'origine — intact. On build par-dessus, on ne
-// casse rien.
-function drawBg(corner) {
-  if (bgReady) {
-    drawBgImage();
-    drawTrackFX(corner);
-  } else {
-    drawBgProcedural(corner);
-  }
+// Distance de course (HUD « distance restante ») : ?distance=1600m
+const RACE_DIST = (() => {
+  const d = parseInt(new URLSearchParams(location.search).get('distance'), 10);
+  return d > 0 ? d : 1600;
+})();
+
+// Palette des bandes selon la surface.
+const COL = IS_SAND
+  ? { sky1:'#79B4E4', sky2:'#CFE8F6', grass:'#C8A96E', race:'#D8BD86', hill:'#B7B589', tree:'#8C8A5A' }
+  : { sky1:'#79B4E4', sky2:'#CFE8F6', grass:'#2D6E1A', race:'#3A8B22', hill:'#5E8C46', tree:'#356B25' };
+
+// drawBg : la scène STATIQUE complète. (un éventuel argument est ignoré)
+function drawBg() {
+  // 1. CIEL [0..0.15] : dégradé bleu clair + nuages statiques
+  const sky = ctx.createLinearGradient(0, 0, 0, H * SKY_BOT);
+  sky.addColorStop(0, COL.sky1); sky.addColorStop(1, COL.sky2);
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H * SKY_BOT);
+  drawClouds();
+
+  // 2. HORIZON [0.15..0.20] : collines + arbres (gauche) + tribune grise (droite)
+  ctx.fillStyle = COL.hill; ctx.fillRect(0, H * SKY_BOT, W, H * (HOR_BOT - SKY_BOT));
+  drawTreeline(H * HOR_BOT);
+  drawGrandstand(H * SKY_BOT, H * HOR_BOT);
+
+  // bandes herbe / course / herbe (les bandes de rail 0.20-0.22 & 0.60-0.62 incluses)
+  ctx.fillStyle = COL.grass; ctx.fillRect(0, H * HOR_BOT,  W, H * (RACE_TOP - HOR_BOT));  // herbe arrière
+  ctx.fillStyle = COL.race;  ctx.fillRect(0, H * RACE_TOP, W, H * (RACE_BOT - RACE_TOP)); // zone de course
+  ctx.fillStyle = COL.grass; ctx.fillRect(0, H * RACE_BOT, W, H * (1 - RACE_BOT));        // herbe avant
+
+  // 3+6. RAILS : ligne blanche + poteaux verticaux tous les 80px (statiques)
+  drawRail(H * RAIL_U);
+  drawRail(H * RAIL_L);
 }
 
-// Photo STATIQUE (ciel + tribune) : calée en hauteur, centrée, ne défile plus.
-// C'est le SOL animé (drawTrackFX) qui porte toute la sensation de vitesse.
-function drawBgImage() {
-  const dw = H * (bgImg.width / bgImg.height);   // largeur image calée sur la hauteur du canvas
-  ctx.drawImage(bgImg, (W - dw) / 2, 0, dw, H);  // centrée, immobile
-}
-
-// ── SOL ANIMÉ (couche entre le PNG statique et les chevaux) ───────────────────
-// Bande du bas : herbe rayée (plat/obstacle/défaut) ou sable (trot/Vincennes) qui
-// défile de droite à gauche à la vitesse de la course → sensation de vitesse au
-// sol pendant que le ciel reste fixe. Rail blanc fixe au bord supérieur. Léger
-// motion blur des rayures en sprint final.
-function drawTrackFX(corner) {
-  const top = HORIZON;                                  // bord supérieur du sol
-  const sprint = progress > 0.86 ? (progress - 0.86) / 0.14 : 0;
-  if (DISCIPLINE === 'trot') drawSand(top, sprint);
-  else drawGrass(top, sprint);
-
-  // Rail : ligne blanche horizontale FIXE (séparation décor / piste).
-  ctx.strokeStyle = 'rgba(255,255,255,0.18)';           // halo
-  ctx.lineWidth = 6;
-  ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(W, top); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(W, top); ctx.stroke();
-}
-
-// Herbe tondue : vert clair (fond) + rayures verticales vert foncé qui défilent.
-function drawGrass(top, sprint) {
-  const gH = H - top;
-  const g = ctx.createLinearGradient(0, top, 0, H);     // dégradé de profondeur
-  g.addColorStop(0, '#2E8038'); g.addColorStop(1, '#1A5622');
-  ctx.fillStyle = g; ctx.fillRect(0, top, W, gH);
-
-  const sw = 46, period = sw * 2, scroll = bgOff * 2.4; // défile à gauche à la vitesse de la course
-  const passes = sprint > 0 ? 3 : 1;                    // passes fantômes = motion blur en sprint
-  ctx.fillStyle = '#16441C';
-  for (let p = 0; p < passes; p++) {
-    ctx.globalAlpha = p === 0 ? 0.5 : 0.5 * 0.45 * sprint;
-    const off = scroll + p * (10 + sprint * 20);        // léger smear horizontal
-    let x = -(((off % period) + period) % period);
-    for (; x < W + sw; x += period) ctx.fillRect(x, top, sw, gH);
-  }
-  ctx.globalAlpha = 1;
-}
-
-// Sable (trot/Vincennes) : beige + fines stries claires/sombres qui défilent.
-function drawSand(top, sprint) {
-  const gH = H - top;
-  const g = ctx.createLinearGradient(0, top, 0, H);
-  g.addColorStop(0, '#D8C291'); g.addColorStop(1, '#B6975F');
-  ctx.fillStyle = g; ctx.fillRect(0, top, W, gH);
-
-  const period = 60, scroll = bgOff * 2.2;
-  const passes = sprint > 0 ? 2 : 1;
-  for (let p = 0; p < passes; p++) {
-    ctx.globalAlpha = (p === 0 ? 1 : sprint) * 0.55;
-    const off = scroll + p * (8 + sprint * 16);
-    let x = -(((off % period) + period) % period);
-    for (; x < W + period; x += period) {
-      ctx.fillStyle = 'rgba(255,242,205,0.22)'; ctx.fillRect(x, top, 3, gH);
-      ctx.fillStyle = 'rgba(110,82,45,0.16)';  ctx.fillRect(x + period * 0.5, top, 2, gH);
-    }
-  }
-  ctx.globalAlpha = 1;
-}
-
-function drawBgProcedural(corner) {
-  // Ciel gradué
-  const sky = ctx.createLinearGradient(0, 0, 0, HORIZON);
-  sky.addColorStop(0, '#0B1E35');
-  sky.addColorStop(0.5, '#1A4868');
-  sky.addColorStop(1, '#2E7FA8');
-  ctx.fillStyle = sky;
-  ctx.fillRect(0, 0, W, HORIZON);
-
-  // Soleil bas (ambiance fin d'après-midi)
-  const sunX = W * 0.75, sunY = HORIZON * 0.4;
-  const sunGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 80);
-  sunGrad.addColorStop(0, 'rgba(255,220,100,0.35)');
-  sunGrad.addColorStop(0.4, 'rgba(255,140,50,0.12)');
-  sunGrad.addColorStop(1, 'rgba(255,100,30,0)');
-  ctx.fillStyle = sunGrad;
-  ctx.fillRect(0, 0, W, HORIZON);
-
-  // Nuages
-  ctx.fillStyle = 'rgba(255,255,255,0.06)';
-  const clouds = [[120,30,55,14],[280,18,70,18],[420,35,45,12],[600,22,80,16],[720,28,50,13]];
-  clouds.forEach(([cx,cy,rx,ry]) => {
-    const px = ((cx - bgOff * 0.15) % (W+120)) - 60;
-    ctx.beginPath(); ctx.ellipse(px, cy, rx, ry, 0, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(px+30, cy-6, rx*0.65, ry*0.8, 0, 0, Math.PI*2); ctx.fill();
+function drawClouds() {
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  const cl = [[110,30,38,12],[300,22,52,15],[470,40,34,11],[640,26,46,14],[735,46,28,9]];
+  cl.forEach(([cx, cy, rx, ry]) => {
+    ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + rx*0.7, cy + 4, rx*0.6, ry*0.8, 0, 0, Math.PI*2); ctx.fill();
   });
+}
 
-  // Tribune — structure + foule
-  const tribY = HORIZON - H * 0.18;
-  const tribH = H * 0.18;
-
-  // Fond tribune
-  ctx.fillStyle = 'rgba(30,50,80,0.5)';
-  ctx.fillRect(0, tribY, W, tribH);
-
-  // Gradins (lignes horizontales)
-  for (let g = 0; g < 6; g++) {
-    const gy = tribY + tribH * (g / 6);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
-  }
-
-  // Colonnes tribune
-  for (let c = 0; c < 16; c++) {
-    const cx = ((bgOff * 0.7 + c * 56) % (W + 56)) - 28;
-    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-    ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(cx, tribY); ctx.lineTo(cx, HORIZON); ctx.stroke();
-  }
-
-  // Foule — points colorés denses
-  const crowd = ['rgba(220,50,50,0.65)','rgba(50,100,220,0.65)','rgba(220,200,50,0.55)','rgba(50,180,80,0.55)','rgba(220,100,220,0.5)','rgba(255,255,255,0.4)','rgba(200,150,50,0.55)','rgba(80,180,220,0.5)'];
-  for (let i = 0; i < 200; i++) {
-    const seed = i * 73.491;
-    const px = ((seed * 5.3 - bgOff * 0.5) % W + W) % W;
-    const py = tribY + 6 + (seed % (tribH * 0.8));
-    ctx.fillStyle = crowd[i % crowd.length];
-    ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI*2); ctx.fill();
-  }
-
-  // Toit tribune (ligne lumineuse)
-  ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, tribY); ctx.lineTo(W, tribY); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 8;
-  ctx.beginPath(); ctx.moveTo(0, tribY); ctx.lineTo(W, tribY); ctx.stroke();
-
-  // Rail supérieur avec lumière
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(0, HORIZON); ctx.lineTo(W, HORIZON); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
-  ctx.lineWidth = 8;
-  ctx.beginPath(); ctx.moveTo(0, HORIZON); ctx.lineTo(W, HORIZON); ctx.stroke();
-
-  // ── PISTE ─────────────────────────────────────────────────────────────────
-  // Effet virage : skew léger du fond de piste
-  const skew = corner * 0.04;
-  ctx.save();
-  if (Math.abs(skew) > 0.001) ctx.transform(1, 0, skew, 1, 0, 0);
-
-  // Dégradé piste (perspective — plus sombre au fond)
-  const trackGrad = ctx.createLinearGradient(0, HORIZON, 0, H);
-  trackGrad.addColorStop(0.00, '#1A4A20');
-  trackGrad.addColorStop(0.15, '#226B2A');
-  trackGrad.addColorStop(0.30, '#2D8036');
-  trackGrad.addColorStop(0.50, '#2D8036');
-  trackGrad.addColorStop(0.65, '#226B2A');
-  trackGrad.addColorStop(0.85, '#1E5E24');
-  trackGrad.addColorStop(1.00, '#163F18');
-  ctx.fillStyle = trackGrad;
-  ctx.fillRect(0, HORIZON, W, H - HORIZON);
-
-  // Rayures de piste (défilent)
-  const sw = 44;
-  for (let i = 0; i < Math.ceil(W / sw) + 2; i++) {
-    const sx = ((bgOff * 2.2 + i * sw) % (W + sw)) - sw;
-    if (i % 2 === 0) {
-      ctx.fillStyle = 'rgba(0,0,0,0.07)';
-      ctx.fillRect(sx, HORIZON, sw, H - HORIZON);
-    }
-  }
-
-  // Lignes de perspective (vanishing lines)
-  ctx.strokeStyle = 'rgba(255,255,255,0.025)';
-  ctx.lineWidth = 1;
-  const vp = {x: W/2, y: HORIZON};
-  for (let vl = 0; vl < 8; vl++) {
-    const bx = (vl / 7) * W;
-    ctx.beginPath(); ctx.moveTo(vp.x, vp.y); ctx.lineTo(bx, H); ctx.stroke();
-  }
-
-  ctx.restore();
-
-  // Rail inférieur
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0, H*0.96); ctx.lineTo(W, H*0.96); ctx.stroke();
-
-  // Poteaux rail (piste)
-  for (let p = 0; p < 14; p++) {
-    const px = ((bgOff * 3.5 + p * 62) % (W + 62)) - 31;
-    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(px, HORIZON+2); ctx.lineTo(px, HORIZON+12); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(px, H*0.94); ctx.lineTo(px, H*0.99); ctx.stroke();
+function drawTreeline(baseY) {
+  ctx.fillStyle = COL.tree;
+  for (let x = -8; x < W * 0.56; x += 20) {       // arbres à gauche/centre (tribune à droite)
+    const h = 9 + ((((x * 13) % 11) + 11) % 11);
+    ctx.beginPath(); ctx.arc(x, baseY, h, Math.PI, 0); ctx.fill();
   }
 }
 
-function drawFinishLine(pRace) {
-  if (pRace < 0.65) return;
-  // La ligne d'arrivée entre dans le champ depuis la droite
-  const t = (pRace - 0.65) / 0.35;
-  const fx = W * 0.92 - (1 - Math.min(1, t * 1.4)) * W * 0.7;
-  if (fx > W) return;
-
-  const sqH = 13;
-  const flH = H - HORIZON;
-  const cols = Math.ceil(flH / sqH);
-  for (let i = 0; i < cols; i++) {
-    ctx.fillStyle = i % 2 === 0 ? 'white' : 'black';
-    ctx.fillRect(fx - 5, HORIZON + i * sqH, 10, sqH);
+function drawGrandstand(yTop, yBot) {
+  const gx = W * 0.58, gw = W * 0.42, roofY = yTop - H * 0.05;
+  ctx.fillStyle = '#9498A0';                       // corps
+  ctx.fillRect(gx, roofY + H * 0.03, gw, yBot - (roofY + H * 0.03));
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;   // gradins
+  for (let k = 1; k < 4; k++) {
+    const ly = roofY + H * 0.03 + (yBot - roofY - H * 0.03) * k / 4;
+    ctx.beginPath(); ctx.moveTo(gx, ly); ctx.lineTo(gx + gw, ly); ctx.stroke();
   }
-  // Poteau
-  ctx.strokeStyle = 'white';
-  ctx.lineWidth = 3;
+  ctx.fillStyle = '#6F737B';                       // toit
   ctx.beginPath();
-  ctx.moveTo(fx, HORIZON - 30); ctx.lineTo(fx, HORIZON);
-  ctx.stroke();
-  // Drapeau
-  ctx.fillStyle = '#C9A84C';
+  ctx.moveTo(gx - 8, roofY + H * 0.04);
+  ctx.lineTo(gx + gw * 0.25, roofY);
+  ctx.lineTo(gx + gw, roofY + H * 0.02);
+  ctx.lineTo(gx + gw, roofY + H * 0.045);
+  ctx.lineTo(gx - 8, roofY + H * 0.045);
+  ctx.closePath(); ctx.fill();
+  const crowd = ['#C44','#46C','#CC4','#4B8','#EEE','#C8A'];  // foule
+  ctx.globalAlpha = 0.5;
+  for (let i = 0; i < 90; i++) {
+    const s = i * 41.3;
+    const px = gx + 6 + (s % (gw - 10));
+    const py = roofY + H * 0.05 + (s % (yBot - roofY - H * 0.06));
+    ctx.fillStyle = crowd[i % crowd.length];
+    ctx.fillRect(px, py, 2, 2);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawRail(y) {
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  for (let x = 0; x <= W; x += 80) {               // poteaux verticaux tous les 80px
+    ctx.beginPath(); ctx.moveTo(x, y - 7); ctx.lineTo(x, y + 2); ctx.stroke();
+  }
+}
+
+// Ligne d'arrivée STATIQUE : damier vertical à X_END dans la zone de course.
+function drawFinishLine() {
+  const fx = X_END * W, top = RACE_TOP * H, bot = RACE_BOT * H, sq = 9;
+  for (let y = top, i = 0; y < bot; y += sq, i++) {
+    ctx.fillStyle = i % 2 ? '#fff' : '#111';
+    ctx.fillRect(fx - 4, y, 8, sq);
+  }
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(fx, top - H * 0.06); ctx.lineTo(fx, bot); ctx.stroke();
+  ctx.fillStyle = '#C9A84C';                        // fanion
   ctx.beginPath();
-  ctx.moveTo(fx, HORIZON - 28); ctx.lineTo(fx + 20, HORIZON - 22); ctx.lineTo(fx, HORIZON - 16);
+  ctx.moveTo(fx, top - H * 0.06); ctx.lineTo(fx + 16, top - H * 0.045); ctx.lineTo(fx, top - H * 0.03);
   ctx.closePath(); ctx.fill();
 }
 
-// Stalles de départ — visibles au tout début, glissent vers la gauche puis s'effacent.
+// Stalles de départ à gauche (X_START), s'effacent au lancement.
 function drawStartGates(p) {
   if (p > 0.06) return;
-  ctx.save();
-  ctx.globalAlpha = 1 - p / 0.06;
-  ctx.strokeStyle = 'rgba(225,225,235,0.9)';
-  ctx.lineWidth = 2;
+  ctx.save(); ctx.globalAlpha = 1 - p / 0.06;
+  ctx.strokeStyle = 'rgba(240,240,245,0.95)'; ctx.lineWidth = 2;
+  const gx = X_START * W - 6;
   for (let i = 0; i < RUNNERS.length; i++) {
-    const y  = LANES[i] * H;
-    const sc = 0.55 + laneDepth(LANES[i]) * 0.62;
-    const gx = CAM_LEAD * W + 34 - p * 220;        // la barrière recule vers la gauche
-    ctx.strokeRect(gx - 6*sc, y - 18*sc, 13*sc, 32*sc);
-    ctx.beginPath(); ctx.moveTo(gx - 6*sc, y - 18*sc); ctx.lineTo(gx + 7*sc, y - 18*sc); ctx.stroke();
+    const y = LANES[i] * H, sc = 0.55 + laneDepth(LANES[i]) * 0.62;
+    ctx.strokeRect(gx - 6*sc, y - 16*sc, 13*sc, 30*sc);
+    ctx.beginPath(); ctx.moveTo(gx - 6*sc, y - 16*sc); ctx.lineTo(gx + 7*sc, y - 16*sc); ctx.stroke();
   }
   ctx.restore();
 }
@@ -871,7 +732,7 @@ function updateDust() {
 
 // ── ÉTAT COURSE ───────────────────────────────────────────────────────────────
 let progress = 0, gameSpeed = 1, raceRunning = false, raceEnded = false;
-let lastTime = 0, frameCount = 0, bgOff2 = 0;
+let lastTime = 0, frameCount = 0, bgOff2 = 0, _boost = 0;   // _boost = coup de rein joueur (0..1)
 
 const PHASES = [
   { pct:0.00, label:'Départ',          comment:'Les partants s\'élancent des starting-gates !' },
@@ -915,22 +776,23 @@ function maybeDramaComment() {
 
 function setSpeed(s) {
   gameSpeed = s;
-  [1,2,4].forEach(v => document.getElementById('spd'+v).className='btn-speed'+(v===s?' active':''));
+  const el = document.getElementById('hud-speed'); if (el) el.textContent = '» ×' + s;
 }
+function cycleSpeed() { setSpeed(gameSpeed === 1 ? 2 : gameSpeed === 2 ? 4 : 1); }   // » top-left
+function powerBoost() { if (raceRunning) _boost = 1; }                               // ⚡ top-right
 
 function gameLoop(ts) {
   const dt = Math.min((ts - lastTime) / 1000, 0.05);
   lastTime = ts;
 
+  if (_boost > 0) _boost = Math.max(0, _boost - dt * 1.6);   // boost joueur (décroît)
+
   if (raceRunning && !raceEnded) {
-    // Vitesse de course variable : burst de départ, ralenti en virage, sprint final.
-    const cvNow = cornerAmt(progress);
+    // Vitesse de course variable : burst de départ, sprint final.
     const phaseMul = (progress < 0.05) ? (0.2 + progress / 0.05 * 0.8)
                    : (progress > 0.86) ? 1.30 : 1.0;
     const dp = dt * 0.013 * gameSpeed * phaseMul;
     progress = Math.min(1, progress + dp);
-    // bgOff = déplacement du sol ; ~170px/s @x1 (0.013*13000), ralentit en virage.
-    bgOff += dp * 13000 * (1 - cvNow * 0.20);
     frameCount += dt * 14 * gameSpeed;                 // cadence galop inchangée
 
     document.getElementById('prog-fill').style.width = (progress * 100).toFixed(1) + '%';
@@ -953,14 +815,65 @@ function gameLoop(ts) {
   requestAnimationFrame(gameLoop);
 }
 
+// ── HUD IN-SCÈNE (réf. SO-Touch) ─────────────────────────────────────────────
+function _panel(x, y, w, h) {                      // panneau semi-transparent arrondi
+  ctx.fillStyle = 'rgba(0,0,0,0.42)';
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, 7); ctx.fill();
+}
+// Classement en bas à gauche.
+function drawHudRanking() {
+  const stand = RUNNERS.map(r => ({ r, s: runnerS(r, progress) })).sort((a, b) => b.s - a.s);
+  const n = Math.min(6, stand.length), rowH = 14, x0 = 8, y0 = H - 6 - n * rowH;
+  ctx.save();
+  _panel(x0, y0 - 6, 158, n * rowH + 10);
+  ctx.textBaseline = 'middle';
+  for (let i = 0; i < n; i++) {
+    const e = stand[i], ry = y0 + i * rowH + 5;
+    ctx.textAlign = 'left'; ctx.font = 'bold 10px Arial';
+    ctx.fillStyle = e.r.isPlayer ? '#FFE08A' : 'rgba(255,255,255,0.6)';
+    ctx.fillText((i + 1) + '.', x0 + 8, ry);
+    ctx.fillStyle = e.r.silk; ctx.fillRect(x0 + 22, ry - 5, 9, 9);
+    ctx.fillStyle = e.r.isPlayer ? '#FFE08A' : '#fff';
+    const nm = (e.r.name.length > 15 ? e.r.name.slice(0, 14) + '…' : e.r.name) + (e.r.isPlayer ? ' ★' : '');
+    ctx.font = (e.r.isPlayer ? 'bold ' : '') + '10px Arial';
+    ctx.fillText(nm, x0 + 36, ry);
+  }
+  ctx.restore();
+}
+// Mini-map en bas à droite : ovale de course + point rouge (position du joueur).
+function drawHudMinimap() {
+  const cx = W - 62, cy = H - 34, rx = 46, ry = 22;
+  ctx.save();
+  _panel(cx - rx - 9, cy - ry - 9, (rx + 9) * 2, (ry + 9) * 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.22)'; ctx.lineWidth = 8;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  const t = progress * Math.PI * 2 - Math.PI / 2;   // départ en haut, sens horaire
+  ctx.fillStyle = '#E83A2A';
+  ctx.beginPath(); ctx.arc(cx + Math.cos(t) * rx, cy + Math.sin(t) * ry, 4.5, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.restore();
+}
+// Distance restante (jaune) à droite.
+function drawHudDistance() {
+  const remain = Math.max(0, Math.round(RACE_DIST * (1 - progress) / 50) * 50);
+  ctx.save();
+  ctx.textAlign = 'right'; ctx.shadowColor = 'rgba(0,0,0,0.65)'; ctx.shadowBlur = 3;
+  ctx.fillStyle = '#F5D21E'; ctx.textBaseline = 'alphabetic'; ctx.font = 'bold 20px Arial';
+  ctx.fillText(remain + ' m', W - 12, 116);                 // sous le bouton power (DOM) pour ne pas être masqué
+  ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = 'bold 8px Arial';
+  ctx.fillText('DISTANCE RESTANTE', W - 12, 128);
+  ctx.restore();
+}
+
 // Dessine UNE frame (fond + chevaux + effets) sans modifier l'état ni relancer
 // la boucle. Réutilisable pour un rendu figé (?frame=) ou un poster de course.
 function renderFrame() {
-  _leaderS = leaderS(progress);          // cache leader 1×/frame (caméra + classement)
-  const cv = cornerAmt(progress);
-  drawBg(cv);
-  drawFinishLine(progress);
-  drawStartGates(progress);
+  _leaderS = leaderS(progress);          // cache leader 1×/frame (X + classement)
+  drawBg();                              // scène statique
+  drawFinishLine();                      // arrivée fixe à droite
+  drawStartGates(progress);              // stalles au départ (gauche)
   updateDust();
 
   // Ordre de dessin = profondeur (précalculé, LANES constant)
@@ -977,12 +890,12 @@ function renderFrame() {
     const depth = laneDepth(yPct);
     const sc = (0.55 + depth * 0.62) * (r.isPlayer ? 1.08 : 1.0);
 
-    // Inclinaison virage : 3-5° vers l'intérieur, sens opposé V1 vs V2.
-    const tilt = cv * (4.5 * Math.PI / 180) * (progress < 0.5 ? 1 : -1);
-
-    // Motion blur horizontal : montée progressive dans le sprint final.
+    // Traversée droite : pas d'inclinaison. Motion blur en sprint + coup de rein joueur.
+    const tilt = 0;
     const sprint = progress > 0.86 ? (progress - 0.86) / 0.14 : 0;
-    const blur = (sprint > 0 && raceRunning) ? (0.6 + sprint * 0.8) * Math.min(1, gameSpeed / 2) : 0;
+    const kickFx = r.isPlayer ? _boost : 0;
+    const blur = ((sprint > 0 || kickFx > 0.05) && raceRunning)
+               ? (0.6 + sprint * 0.8 + kickFx * 0.9) * Math.min(1, Math.max(1, gameSpeed) / 2) : 0;
 
     // Ombre
     ctx.save();
@@ -993,9 +906,10 @@ function renderFrame() {
     ctx.fill();
     ctx.restore();
 
-    // Poussière (premier plan) — boost au départ (explosion des stalles).
+    // Poussière — boost au départ + coup de rein du joueur.
     const departBoost = progress < 0.04 ? 4 : 1;
-    if (raceRunning && depth > 0.5 && Math.random() < 0.15 * gameSpeed * departBoost) {
+    const kick = (r.isPlayer && _boost > 0.05) ? 5 : 1;
+    if (raceRunning && depth > 0.45 && Math.random() < 0.15 * gameSpeed * departBoost * kick) {
       spawnDust(px - 10*sc, py + 14*sc, r.body);
     }
 
@@ -1031,8 +945,10 @@ function renderFrame() {
     }
   });
 
-  // Live UI
-  if (raceRunning) updateLive();
+  // HUD in-scène (SO-Touch) : classement, mini-map, distance restante
+  drawHudRanking();
+  drawHudMinimap();
+  drawHudDistance();
 }
 
 function setPhaseUI(idx) {
@@ -1204,14 +1120,13 @@ if (_frame !== null) {
     renderFrame();
     raceRunning = false;
   };
-  if (bgReady) renderStaticFrame();
-  else { bgImg.addEventListener('load', renderStaticFrame); setTimeout(() => { if (!bgReady) renderStaticFrame(); }, 2000); }
+  renderStaticFrame();                  // fond procédural → rien à charger
 }
 
 // Vitesse initiale (le jeu passe ?speed=4 pour une course brève ~20s).
 const _spd = parseFloat(_params.get('speed'));
 if (_spd && [1, 2, 4].indexOf(_spd) >= 0) setSpeed(_spd);
-else if (_spd) gameSpeed = Math.max(1, Math.min(4, _spd));
+else if (_spd) setSpeed(Math.max(1, Math.min(4, _spd)));   // passe par setSpeed → label HUD synchronisé
 
 // Démarrage auto optionnel (preview / câblage iframe) :  race_v3.html?autostart=1
 if (_params.get('autostart')) startRace();
