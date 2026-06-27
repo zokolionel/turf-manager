@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TURF MANAGER FRANCE</title>
+<!-- PWA -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A2E1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Turf Manager">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --green-dark: #0A2E1A; --green: #1B5E35; --green-light: #2D8653;
+    --gold: #C9A84C; --gold-light: #F0D080; --dirt: #8B6914;
+    --red: #C0392B; --blue: #2980B9; --purple: #6B4C9A;
+    --text: #1A1A1A; --muted: #7A7A7A; --panel: #FFFFFF;
+    --bg: #F0EDE6; --border: #DDD8CE; --paper: #FBF8F1;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; max-width: 430px; margin: 0 auto; }
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  .header { background: var(--green-dark); padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; border-bottom: 3px solid var(--gold); }
+  .header-title { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; color: var(--gold-light); }
+  .back-btn { background: none; border: none; color: var(--gold-light); font-size: 20px; cursor: pointer; padding: 4px 8px; }
+  .money-badge { background: var(--gold); color: var(--green-dark); font-weight: 700; font-size: 13px; padding: 5px 12px; border-radius: 20px; }
+
+  #screen-welcome { background: linear-gradient(180deg, var(--green-dark) 0%, #0d3d22 50%, var(--green-dark) 100%); justify-content: center; align-items: center; text-align: center; padding: 40px 24px; position: relative; overflow: hidden; }
+  #screen-welcome::before { content: '🏇'; position: absolute; font-size: 220px; opacity: 0.05; top: 50%; left: 50%; transform: translate(-50%,-50%); }
+  .logo-turf { font-family: 'Playfair Display', serif; font-size: 46px; font-weight: 900; color: var(--gold-light); line-height: 1; text-shadow: 0 2px 20px rgba(201,168,76,0.4); }
+  .logo-sub { font-family: 'Playfair Display', serif; font-size: 15px; color: var(--gold); letter-spacing: 3px; text-transform: uppercase; margin-top: 6px; }
+  .welcome-desc { color: rgba(255,255,255,0.6); font-size: 14px; margin: 26px 0 38px; line-height: 1.7; }
+  .feature-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-bottom: 32px; }
+  .feature-pill { background: rgba(201,168,76,0.15); color: var(--gold-light); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+
+  .setup-body { flex: 1; overflow-y: auto; padding: 20px 16px 40px; }
+  .section-label { font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--green); margin: 22px 0 10px; }
+  .section-label:first-child { margin-top: 0; }
+  .field-input { width: 100%; background: var(--panel); border: 1.5px solid var(--border); color: var(--text); padding: 13px 14px; border-radius: 10px; font-size: 15px; outline: none; font-family: 'Inter',sans-serif; }
+  .field-input:focus { border-color: var(--green); }
+
+  .disc-card { background: var(--panel); border: 2px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s; display: flex; gap: 14px; align-items: center; }
+  .disc-card.selected { border-color: var(--green); background: rgba(27,94,53,0.08); }
+  .disc-emoji { font-size: 34px; flex-shrink: 0; }
+  .disc-info { flex: 1; }
+  .disc-name { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 17px; }
+  .disc-desc { font-size: 12px; color: var(--muted); margin-top: 3px; line-height: 1.4; }
+  .disc-meta { font-size: 11px; color: var(--green); margin-top: 5px; font-weight: 600; }
+
+  .hub-body { flex: 1; overflow-y: auto; padding-bottom: 85px; }
+  .stable-hero { background: linear-gradient(135deg, var(--green-dark), var(--green)); padding: 18px 16px; color: white; }
+  .stable-name { font-family: 'Playfair Display', serif; font-size: 23px; font-weight: 700; color: var(--gold-light); }
+  .stable-meta { font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 3px; }
+  .disc-badge { display: inline-block; background: var(--gold); color: var(--green-dark); padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-top: 6px; }
+  .stable-stats-row { display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+  .stable-stat { text-align: center; }
+  .stable-stat-val { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: var(--gold-light); }
+  .stable-stat-label { font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+
+  .quick-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 14px 16px; }
+  .qa-card { background: var(--panel); border-radius: 12px; padding: 13px 8px; cursor: pointer; transition: all 0.15s; border: 1px solid var(--border); text-align: center; -webkit-tap-highlight-color: transparent; }
+  .qa-card:active { transform: scale(0.96); }
+  .qa-icon { font-size: 24px; margin-bottom: 5px; }
+  .qa-title { font-weight: 600; font-size: 12px; }
+
+  .horses-section { padding: 0 16px 16px; }
+  .horses-title { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; margin-bottom: 12px; }
+  .horse-card { background: var(--panel); border-radius: 12px; padding: 13px; margin-bottom: 10px; border: 1px solid var(--border); cursor: pointer; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+  .horse-card:active { transform: scale(0.99); }
+  .horse-card-row { display: flex; align-items: center; gap: 11px; }
+  .horse-emoji { font-size: 30px; width: 44px; text-align: center; }
+  .horse-info { flex: 1; }
+  .horse-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; }
+  .horse-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .horse-record { font-size: 11px; font-weight: 600; margin-top: 3px; }
+  .horse-overall { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--green); }
+  .star-rating { color: var(--gold); font-size: 11px; }
+
+  .mini-bars { margin-top: 9px; }
+  .mini-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .mini-bar-label { font-size: 10px; color: var(--muted); width: 70px; flex-shrink: 0; }
+  .mini-bar-wrap { flex: 1; background: var(--border); height: 6px; border-radius: 3px; overflow: hidden; }
+  .mini-bar-fill { height: 100%; border-radius: 3px; }
+  .mini-bar-val { font-size: 11px; font-weight: 600; width: 22px; text-align: right; }
+
+  .scroll-body { flex: 1; overflow-y: auto; padding: 16px; padding-bottom: 100px; }
+  .market-horse-card { background: var(--panel); border-radius: 14px; padding: 15px; margin-bottom: 12px; border: 1px solid var(--border); }
+  .market-horse-row { display: flex; align-items: center; gap: 11px; margin-bottom: 11px; }
+  .market-horse-info { flex: 1; }
+  .market-horse-price { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; color: var(--dirt); text-align: right; }
+  .market-horse-potential { font-size: 11px; color: var(--muted); text-align: right; }
+
+  .tag { display: inline-block; padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 600; margin-right: 3px; }
+  .tag-green { background: rgba(27,94,53,0.12); color: var(--green); }
+  .tag-gold { background: rgba(201,168,76,0.15); color: var(--dirt); }
+  .tag-blue { background: rgba(41,128,185,0.1); color: var(--blue); }
+
+  .horse-selector { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 14px; scrollbar-width: none; }
+  .horse-selector::-webkit-scrollbar { display: none; }
+  .horse-pill { background: var(--panel); border: 2px solid var(--border); border-radius: 30px; padding: 8px 15px; white-space: nowrap; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; flex-shrink: 0; }
+  .horse-pill.selected { border-color: var(--green); background: rgba(27,94,53,0.1); color: var(--green); font-weight: 600; }
+
+  .training-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .training-opt { background: var(--panel); border: 2px solid var(--border); border-radius: 12px; padding: 13px; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .training-opt.selected { border-color: var(--green); background: rgba(27,94,53,0.08); }
+  .training-opt-icon { font-size: 22px; margin-bottom: 5px; }
+  .training-opt-name { font-weight: 600; font-size: 13px; }
+  .training-opt-bonus { font-size: 11px; color: var(--green); margin-top: 3px; }
+  .training-opt-cost { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .intensity-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .intensity-opt { background: var(--panel); border: 2px solid var(--border); border-radius: 10px; padding: 10px 6px; cursor: pointer; text-align: center; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+  .intensity-opt.selected { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+  .intensity-opt-icon { font-size: 18px; margin-bottom: 3px; }
+  .intensity-opt-name { font-weight: 700; font-size: 12px; }
+  .intensity-opt-desc { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+  .program-summary { background: rgba(27,94,53,0.07); border-left: 3px solid var(--green); border-radius: 4px; padding: 10px 12px; font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.7; }
+  .horse-stat-panel { background: var(--panel); border-radius: 12px; padding: 14px; margin-bottom: 14px; border: 1px solid var(--border); }
+
+  .racecard { background: var(--paper); border-radius: 10px; padding: 16px; margin-bottom: 12px; border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+  .racecard-header { border-bottom: 2px solid var(--green-dark); padding-bottom: 8px; margin-bottom: 10px; }
+  .racecard-grade { display: inline-block; background: var(--green-dark); color: var(--gold-light); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .racecard-venue { display:inline-block; background: var(--blue); color: white; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-left: 4px; }
+  .racecard-name { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 800; margin-top: 6px; }
+  .racecard-details { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .racecard-prize { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; color: var(--dirt); margin-top: 6px; }
+  .runner-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dotted var(--border); font-size: 12px; }
+  .runner-row:last-child { border-bottom: none; }
+  .runner-num { width: 20px; height: 20px; background: var(--green-dark); color: white; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .runner-row.mine { background: rgba(201,168,76,0.1); border-radius: 6px; padding: 6px 8px; }
+  .runner-name { flex: 1; font-weight: 500; }
+  .runner-odds { font-weight: 700; color: var(--dirt); }
+
+  .race-log { background: var(--green-dark); border-radius: 10px; padding: 14px; margin-bottom: 14px; min-height: 100px; font-size: 13px; line-height: 1.9; color: rgba(255,255,255,0.5); border: 1px solid var(--green); }
+  .race-log-line { color: rgba(255,255,255,0.9); }
+  .race-log-line.win { color: var(--gold-light); font-weight: 600; }
+  .race-log-line.lose { color: #FF6B6B; }
+  .race-log-line.podium { color: #7ECFA0; }
+  .race-log-line.dai { color: #FF8C42; font-weight: 600; }
+
+  /* ── ANIMATION DE COURSE ── */
+  .race-track-wrap { background: var(--green-dark); border-radius: 14px; padding: 14px; margin-bottom: 14px; overflow: hidden; }
+  .race-track-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .race-track-title { font-family: 'Playfair Display', serif; font-size: 14px; font-weight: 700; color: var(--gold-light); }
+  .race-track-info { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .race-lane { position: relative; height: 28px; margin-bottom: 5px; display: flex; align-items: center; }
+  .race-lane-bg { position: absolute; left: 0; right: 0; height: 100%; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); }
+  .race-lane-mine { background: rgba(201,168,76,0.12); border-color: rgba(201,168,76,0.3); }
+  .race-horse-block { position: absolute; left: 0; height: 22px; min-width: 32px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; transition: left 0.45s cubic-bezier(0.25,0.46,0.45,0.94); z-index: 2; white-space: nowrap; padding: 0 6px; }
+  .race-horse-block.mine { background: var(--gold); color: var(--green-dark); box-shadow: 0 0 10px rgba(201,168,76,0.5); }
+  .race-horse-block.rival { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); }
+  .race-horse-block.lead { background: rgba(255,255,255,0.3); color: white; }
+  .race-finish-line { position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.3); }
+  .race-finish-flag { position: absolute; right: -2px; top: -14px; font-size: 14px; }
+  .race-phase-label { font-size: 11px; color: rgba(255,255,255,0.5); text-align: center; margin: 8px 0 4px; font-style: italic; }
+  .race-comment { font-size: 13px; color: var(--gold-light); font-weight: 600; text-align: center; min-height: 20px; margin-top: 8px; }
+  .race-positions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+  .race-pos-chip { background: rgba(255,255,255,0.08); border-radius: 20px; padding: 3px 10px; font-size: 10px; color: rgba(255,255,255,0.6); }
+  .race-pos-chip.mine { background: rgba(201,168,76,0.25); color: var(--gold-light); font-weight: 700; }
+
+  .result-banner { border-radius: 14px; padding: 20px; text-align: center; margin-bottom: 14px; }
+  .result-banner.first { background: linear-gradient(135deg, #8B6914, var(--gold)); }
+  .result-banner.podium { background: linear-gradient(135deg, #2D5016, var(--green)); }
+  .result-banner.lose { background: var(--paper); border: 2px solid var(--border); }
+  .result-banner.dai { background: linear-gradient(135deg, #8B4513, #C0392B); }
+  .result-pos { font-family: 'Playfair Display', serif; font-size: 46px; font-weight: 900; }
+  .result-pos.first { color: white; } .result-pos.podium { color: var(--gold-light); } .result-pos.lose { color: var(--muted); } .result-pos.dai { color: white; }
+  .result-sub { font-size: 14px; margin-top: 4px; }
+  .result-sub.first, .result-sub.podium, .result-sub.dai { color: rgba(255,255,255,0.85); } .result-sub.lose { color: var(--muted); }
+  .result-prize { font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; margin-top: 8px; }
+  .result-prize.first, .result-prize.podium { color: white; } .result-prize.lose { color: var(--green-dark); } .result-prize.dai { color: white; }
+
+  .bet-box { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .bet-options { display: flex; gap: 8px; margin-top: 10px; }
+  .bet-chip { flex: 1; background: var(--bg); border: 2px solid var(--border); border-radius: 10px; padding: 10px; text-align: center; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+  .bet-chip.selected { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+
+  .breed-select-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .breed-slot { flex: 1; background: var(--panel); border: 2px dashed var(--border); border-radius: 12px; padding: 16px; text-align: center; cursor: pointer; min-height: 100px; display: flex; flex-direction: column; justify-content: center; }
+  .breed-slot.filled { border-style: solid; border-color: var(--green); }
+  .breed-slot-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .breed-vs { display: flex; align-items: center; font-size: 20px; color: var(--gold); }
+
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--green-dark); border-top: 2px solid var(--gold); display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 0 12px; z-index: 10; }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; padding: 3px; }
+  .nav-icon { font-size: 19px; }
+  .nav-label { font-size: 9px; color: rgba(255,255,255,0.5); }
+  .nav-item.active .nav-label { color: var(--gold-light); }
+
+  .btn-primary { width: 100%; background: var(--green); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+  .btn-primary:active { transform: scale(0.98); }
+  .btn-primary:disabled { background: var(--border); color: var(--muted); }
+  .btn-gold { width: 100%; background: var(--gold); color: var(--green-dark); border: none; padding: 14px; border-radius: 12px; font-size: 15px; font-weight: 700; cursor: pointer; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+  .btn-gold:active { transform: scale(0.98); }
+  .btn-secondary { width: 100%; background: transparent; color: var(--text); border: 1.5px solid var(--border); padding: 14px; border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 8px; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+  .btn-danger { width: 100%; background: transparent; color: var(--red); border: 1.5px solid var(--red); padding: 12px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; -webkit-tap-highlight-color: transparent; font-family: 'Inter',sans-serif; }
+
+  .info-box { background: rgba(27,94,53,0.08); border-left: 3px solid var(--green); border-radius: 4px; padding: 12px 14px; font-size: 13px; color: var(--muted); margin-bottom: 14px; line-height: 1.6; }
+  .notification { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--green-dark); color: var(--gold-light); border: 1px solid var(--gold); padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 600; z-index: 200; opacity: 0; transition: opacity 0.3s; white-space: nowrap; max-width: 90vw; text-align: center; }
+  .notification.show { opacity: 1; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+  .week-banner { background: var(--panel); border-radius: 12px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; border: 1px solid var(--border); }
+  .week-val { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: var(--green); }
+  .section-title-sm { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; justify-content: flex-end; flex-direction: column; }
+  .modal-overlay.show { display: flex; }
+  .modal-sheet { background: var(--bg); border-radius: 20px 20px 0 0; padding: 22px 18px 36px; max-height: 75vh; overflow-y: auto; }
+  .modal-title { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 800; margin-bottom: 16px; text-align: center; color: var(--green-dark); }
+
+  .staff-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .staff-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .staff-emoji { font-size: 28px; }
+  .staff-name { font-weight: 700; font-size: 14px; }
+  .staff-role { font-size: 11px; color: var(--muted); }
+  .staff-effect { font-size: 12px; color: var(--green); margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<div class="notification" id="notification"></div>
+
+<!-- WELCOME -->
+<div class="screen active" id="screen-welcome">
+  <div class="logo-turf">TURF MANAGER</div>
+  <div class="logo-sub">France</div>
+  <p class="welcome-desc">Le simulateur de courses hippiques françaises.<br>Plat, Obstacle, Trot Attelé, Trot Monté.</p>
+  <div class="feature-pills">
+    <span class="feature-pill">🏇 4 disciplines</span>
+    <span class="feature-pill">📍 Vrais hippodromes</span>
+    <span class="feature-pill">🧬 Élevage</span>
+    <span class="feature-pill">🏆 Championnat</span>
+  </div>
+  <button class="btn-primary" onclick="showScreen('setup')" style="position:relative;z-index:1">🏇 Fonder mon écurie</button>
+</div>
+
+<!-- SETUP -->
+<div class="screen" id="screen-setup">
+  <div class="header"><button class="back-btn" onclick="showScreen('welcome')">←</button><span class="header-title">Fonder l'écurie</span><div></div></div>
+  <div class="setup-body">
+    <div class="section-label">Nom de l'écurie</div>
+    <input class="field-input" id="stable-name-input" placeholder="Ex: Écurie de la Plaine" maxlength="30">
+    <div class="section-label">Propriétaire</div>
+    <input class="field-input" id="owner-name-input" placeholder="Ton nom" maxlength="25">
+    <div class="section-label">Discipline (définitif)</div>
+    <div id="disc-cards"></div>
+    <div style="height:24px"></div>
+    <button class="btn-primary" onclick="createStable()">Commencer →</button>
+  </div>
+</div>
+
+<!-- HUB -->
+<div class="screen" id="screen-hub">
+  <div class="header"><span class="header-title">🏆 Turf Manager France</span><div class="money-badge" id="hub-money">€15,000</div></div>
+  <div class="hub-body">
+    <div class="stable-hero">
+      <div class="stable-name" id="hub-stable-name">—</div>
+      <div class="stable-meta" id="hub-stable-meta">—</div>
+      <div class="disc-badge" id="hub-disc-badge">—</div>
+      <div class="stable-stats-row">
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-horses">0</div><div class="stable-stat-label">Chevaux</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-wins">0</div><div class="stable-stat-label">Victoires</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-prestige">⭐</div><div class="stable-stat-label">Prestige</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-season">A.1</div><div class="stable-stat-label">Saison</div></div>
+        <div class="stable-stat"><div class="stable-stat-val" id="hub-week">S.1</div><div class="stable-stat-label">Semaine</div></div>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <div class="qa-card" onclick="showScreen('market')"><div class="qa-icon">🛒</div><div class="qa-title">Ventes</div></div>
+      <div class="qa-card" onclick="showScreen('training')"><div class="qa-icon">💪</div><div class="qa-title">Entraîner</div></div>
+      <div class="qa-card" onclick="showScreen('race')"><div class="qa-icon">🏇</div><div class="qa-title">Courses</div></div>
+      <div class="qa-card" onclick="showScreen('breeding')"><div class="qa-icon">🧬</div><div class="qa-title">Élevage</div></div>
+      <div class="qa-card" onclick="showCalendarModal()"><div class="qa-icon">📅</div><div class="qa-title">Calendrier</div></div>
+      <div class="qa-card" onclick="showBankModal()"><div class="qa-icon">🏦</div><div class="qa-title">Banque</div></div>
+      <div class="qa-card" onclick="advanceWeek()"><div class="qa-icon">⏭️</div><div class="qa-title">Sem.+1</div></div>
+    </div>
+    <div class="horses-section">
+      <div class="horses-title">🐴 Mon Écurie</div>
+      <div id="hub-horses-list"></div>
+      <div style="margin-top:16px;text-align:center;display:flex;gap:16px;justify-content:center"><button onclick="showRankingModal()" style="background:none;border:none;color:var(--green);font-size:12px;text-decoration:underline;cursor:pointer">🏆 Classement</button><button onclick="resetGame()" style="background:none;border:none;color:var(--muted);font-size:12px;text-decoration:underline;cursor:pointer">🗑️ Nouvelle partie</button></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="showScreen('hub')"><div class="nav-icon">🏠</div><div class="nav-label">Écurie</div></div>
+    <div class="nav-item" onclick="showScreen('market')"><div class="nav-icon">🛒</div><div class="nav-label">Ventes</div></div>
+    <div class="nav-item" onclick="showScreen('training')"><div class="nav-icon">💪</div><div class="nav-label">Training</div></div>
+    <div class="nav-item" onclick="showScreen('race')"><div class="nav-icon">🏇</div><div class="nav-label">Courses</div></div>
+    <div class="nav-item" onclick="showScreen('breeding')"><div class="nav-icon">🧬</div><div class="nav-label">Élevage</div></div>
+  </div>
+</div>
+
+<!-- MARKET -->
+<div class="screen" id="screen-market">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Ventes</span><div class="money-badge" id="market-money">€15,000</div></div>
+  <div class="scroll-body">
+    <div class="info-box" id="market-info">Achète des chevaux adaptés à ta discipline.</div>
+    <div class="section-title-sm">🐎 Catalogue de vente</div>
+    <div id="market-list"></div>
+    <div class="divider"></div>
+    <div class="section-title-sm">📤 Vendre</div>
+    <div id="sell-list"></div>
+    <button class="btn-secondary" onclick="refreshMarket()">🔄 Nouveau catalogue</button>
+  </div>
+</div>
+
+<!-- TRAINING -->
+<div class="screen" id="screen-training">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Entraînement</span><div class="money-badge" id="training-money-badge">€15,000</div></div>
+  <div class="scroll-body">
+    <div class="week-banner">
+      <div><div style="font-size:12px;color:var(--muted)">Saison / Semaine</div><div class="week-val" id="training-week">A.1 — S.1</div></div>
+      <div style="text-align:right;font-size:12px;color:var(--muted)">Entretien/sem.<br><strong style="color:var(--green)" id="upkeep-cost">€0</strong></div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Cheval :</div>
+    <div class="horse-selector" id="horse-selector"></div>
+    <div id="selected-horse-stats" class="horse-stat-panel" style="display:none"></div>
+    <div class="section-title-sm">Programme hebdomadaire</div>
+    <div class="training-options" id="training-programs"></div>
+    <div class="section-title-sm" style="margin-top:14px">Intensité</div>
+    <div class="intensity-row" id="training-intensities"></div>
+    <div id="program-summary" class="program-summary" style="display:none"></div>
+    <button class="btn-primary" id="btn-apply-program" onclick="applyProgram()">✅ Appliquer ce programme</button>
+    <button class="btn-secondary" onclick="showScreen('hub')">← Retour</button>
+  </div>
+</div>
+
+<!-- RACE -->
+<div class="screen" id="screen-race">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Réunion</span><div class="money-badge" id="race-money">€15,000</div></div>
+  <div class="scroll-body" id="race-body"></div>
+</div>
+
+<!-- BREEDING -->
+<div class="screen" id="screen-breeding">
+  <div class="header"><button class="back-btn" onclick="showScreen('hub')">←</button><span class="header-title">Élevage</span><div class="money-badge" id="breeding-money">€15,000</div></div>
+  <div class="scroll-body">
+    <div class="info-box">Accouple une <strong>jument</strong> et un <strong>étalon</strong> de ta discipline. Frais de saillie : <strong>€3,000</strong>.</div>
+    <div class="breed-select-row">
+      <div class="breed-slot" id="slot-mare" onclick="openBreedPicker('mare')"><div class="breed-slot-label">Jument ♀</div><div id="mare-display" style="font-size:13px;color:var(--muted)">Choisir</div></div>
+      <div class="breed-vs">🧬</div>
+      <div class="breed-slot" id="slot-stallion" onclick="openBreedPicker('stallion')"><div class="breed-slot-label">Étalon ♂</div><div id="stallion-display" style="font-size:13px;color:var(--muted)">Choisir</div></div>
+    </div>
+    <div id="breed-preview"></div>
+    <button class="btn-primary" id="btn-breed" onclick="doBreed()" disabled>🧬 Accoupler (€3,000)</button>
+    <div class="divider"></div>
+    <div class="section-title-sm">📜 Poulains à naître</div>
+    <div id="foals-list"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="breed-picker" onclick="closeModal('breed-picker')"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-title" id="breed-picker-title">Choisir</div><div id="breed-picker-list"></div><button class="btn-secondary" onclick="closeModal('breed-picker')">Fermer</button></div></div>
+<div class="modal-overlay" id="bank-modal" onclick="closeModal('bank-modal')"><div class="modal-sheet" onclick="event.stopPropagation()"><div style="display:flex;justify-content:flex-end;margin-bottom:-8px"><button onclick="closeModal('bank-modal')" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px 8px">✕</button></div><div class="modal-title">🏦 Banque du Turf</div><div id="bank-modal-content"></div><button class="btn-secondary" onclick="closeModal('bank-modal')">Fermer</button></div></div>
+<div class="modal-overlay" id="staff-modal" onclick="closeModal('staff-modal')"><div class="modal-sheet" onclick="event.stopPropagation()"><div class="modal-title">👔 Personnel</div><div id="staff-list"></div><button class="btn-secondary" onclick="closeModal('staff-modal')">Fermer</button></div></div>
+<div class="modal-overlay" id="horse-modal" onclick="closeModal('horse-modal')"><div class="modal-sheet" onclick="event.stopPropagation()"><div style="display:flex;justify-content:flex-end;margin-bottom:-8px"><button onclick="closeModal('horse-modal')" style="background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px 8px">✕</button></div><div id="horse-modal-content"></div><button class="btn-secondary" onclick="closeModal('horse-modal')">Fermer</button></div></div>
+
+<!-- Overlay course : iframe race_v3.html plein écran pendant la course (jeu en pause) -->
+<div id="race-overlay" style="display:none;position:fixed;inset:0;z-index:2147483647;background:#0D2B1A">
+  <iframe id="race-frame" title="Course en direct" style="width:100%;height:100%;border:0;display:block"></iframe>
+</div>
+
+<script>
+// ============ DISCIPLINES ============
+const DISCIPLINES = {
+  plat: {
+    name: 'Plat', emoji: '🏇', breed: 'Pur-Sang',
+    desc: 'Galop pur sur piste plate. Vitesse et endurance, terrain herbe ou sable.',
+    meta: '800-4000m • Pur-Sang • France Galop',
+    keyStats: ['vitesse','endurance'],
+    venues: ['ParisLongchamp','Chantilly','Deauville','Saint-Cloud','Maisons-Laffitte',
+             'Compiegne','Vichy','Lyon-Parilly','Bordeaux','Toulouse',
+             'Marseille-Borély','Cagnes-sur-Mer','Strasbourg','Fontainebleau','Nantes',
+             'Le Lion-d\'Angers','Clairefontaine','Argentan-Plat','Pornichet-La Baule','Dieppe'],
+    venueTier: {
+      'ParisLongchamp':'premium','Chantilly':'premium','Deauville':'premium','Saint-Cloud':'premium',
+      'Maisons-Laffitte':'semi','Compiegne':'semi','Vichy':'semi','Lyon-Parilly':'semi',
+      'Bordeaux':'regional','Toulouse':'regional','Marseille-Borély':'regional','Cagnes-sur-Mer':'regional',
+      'Strasbourg':'regional','Fontainebleau':'regional','Nantes':'regional','Le Lion-d\'Angers':'regional',
+      'Clairefontaine':'secondaire','Argentan-Plat':'secondaire','Pornichet-La Baule':'secondaire','Dieppe':'secondaire',
+    },
+    distances: ['1400m','1600m','2000m','2400m','3000m'],
+    dai: false,
+  },
+  obstacle: {
+    name: 'Obstacle', emoji: '🚧', breed: 'AQPS / Pur-Sang',
+    desc: 'Haies, steeple-chase, cross. Saut, endurance et bravoure. Risque de chute.',
+    meta: '2800-7300m • Auteuil • France Galop',
+    keyStats: ['saut','endurance'],
+    venues: ['Auteuil','Pau','Compiegne','Enghien','Fontainebleau','Cagnes-sur-Mer',
+             'Dieppe','Nantes','Cluny','Craon',
+             'Le Lion-d\'Angers','Strasbourg','Clairefontaine'],
+    venueTier: {
+      'Auteuil':'premium','Pau':'premium',
+      'Compiegne':'semi','Enghien':'semi','Fontainebleau':'semi','Cagnes-sur-Mer':'semi',
+      'Dieppe':'regional','Nantes':'regional','Cluny':'regional','Craon':'regional',
+      'Le Lion-d\'Angers':'secondaire','Strasbourg':'secondaire','Clairefontaine':'secondaire',
+    },
+    distances: ['2800m','3600m','4400m','5500m'],
+    dai: false,
+  },
+  attele: {
+    name: 'Trot Attelé', emoji: '🛷', breed: 'Trotteur Français',
+    desc: 'Le cheval tracte un sulky conduit par un driver. Allure trot obligatoire.',
+    meta: '1600-4100m • Vincennes • SECF',
+    keyStats: ['vitesse','regularite'],
+    venues: ['Vincennes','Enghien-Soisy','Caen','Cabourg','Cagnes-sur-Mer','Vichy',
+             'Laval','Mauquenchy','Reims','Meslay-du-Maine','Chatelet','Lyon-Parilly',
+             'Marseille-Borély','Nantes','Rouen-Trot','Strasbourg','Bordeaux',
+             'Toulouse','Amiens','Dieppe'],
+    venueTier: {
+      'Vincennes':'premium','Enghien-Soisy':'premium',
+      'Caen':'semi','Cabourg':'semi','Cagnes-sur-Mer':'semi','Vichy':'semi',
+      'Laval':'regional','Mauquenchy':'regional','Reims':'regional','Meslay-du-Maine':'regional',
+      'Chatelet':'regional','Lyon-Parilly':'regional',
+      'Marseille-Borély':'secondaire','Nantes':'secondaire','Rouen-Trot':'secondaire',
+      'Strasbourg':'secondaire','Bordeaux':'secondaire','Toulouse':'secondaire',
+      'Amiens':'secondaire','Dieppe':'secondaire',
+    },
+    distances: ['2100m','2700m','2875m','3200m'],
+    dai: true,
+  },
+  monte: {
+    name: 'Trot Monté', emoji: '🏇', breed: 'Trotteur Français',
+    desc: 'Le jockey monte le trotteur. Allure trot obligatoire, technique exigeante.',
+    meta: '1800-3000m • Vincennes • SECF',
+    keyStats: ['regularite','endurance'],
+    venues: ['Vincennes','Enghien-Soisy','Cabourg','Caen','Le Croisé-Laroche','Vichy',
+             'Argentan','Graignes','Laval','Marseille-Vivaux',
+             'Lyon-Parilly','Reims','Mauquenchy','Nantes','Rouen-Trot','Strasbourg'],
+    venueTier: {
+      'Vincennes':'premium','Enghien-Soisy':'premium',
+      'Cabourg':'semi','Caen':'semi','Le Croisé-Laroche':'semi','Vichy':'semi',
+      'Argentan':'regional','Graignes':'regional','Laval':'regional','Marseille-Vivaux':'regional',
+      'Lyon-Parilly':'regional','Reims':'secondaire','Mauquenchy':'secondaire',
+      'Nantes':'secondaire','Rouen-Trot':'secondaire','Strasbourg':'secondaire',
+    },
+    distances: ['2100m','2700m','2900m'],
+    dai: true,
+  },
+};
+
+// Stats par discipline : libellés affichés
+const STAT_LABELS = {
+  vitesse: 'Vitesse', endurance: 'Endurance', saut: 'Saut', regularite: 'Régularité',
+};
+
+// ============ HIPPODROMES (corde + piste) ============
+// Chantilly : piste saisonnière — PSF S1-12 et S40-52, Herbe S13-39
+const VENUES = {
+  // PLAT
+  'ParisLongchamp':    {corde:'D', piste:'Herbe'},
+  'Chantilly':         {corde:'D', piste:'Herbe'},   // piste gérée dynamiquement
+  'Deauville':         {corde:'D', piste:'PSF'},
+  'Saint-Cloud':       {corde:'G', piste:'Herbe'},
+  'Maisons-Laffitte':  {corde:'D', piste:'Herbe'},
+  'Compiegne':         {corde:'D', piste:'Herbe'},
+  'Vichy':             {corde:'D', piste:'Herbe'},
+  'Lyon-Parilly':      {corde:'G', piste:'Herbe'},
+  'Bordeaux':          {corde:'G', piste:'Herbe'},
+  'Toulouse':          {corde:'D', piste:'Herbe'},
+  'Marseille-Borély':  {corde:'G', piste:'Herbe'},
+  'Cagnes-sur-Mer':    {corde:'G', piste:'Herbe'},
+  'Strasbourg':        {corde:'D', piste:'Herbe'},
+  'Fontainebleau':     {corde:'D', piste:'Sable'},
+  'Nantes':            {corde:'G', piste:'Herbe'},
+  'Le Lion-d\'Angers': {corde:'G', piste:'Herbe'},
+  'Clairefontaine':    {corde:'D', piste:'Herbe'},
+  'Argentan-Plat':     {corde:'D', piste:'Herbe'},
+  'Pornichet-La Baule':{corde:'G', piste:'Sable'},
+  'Dieppe':            {corde:'G', piste:'Herbe'},
+  // OBSTACLE
+  'Auteuil':           {corde:'D', piste:'Herbe'},
+  'Pau':               {corde:'G', piste:'Herbe'},
+  'Enghien':           {corde:'G', piste:'PSF'},
+  'Cluny':             {corde:'D', piste:'Herbe'},
+  'Craon':             {corde:'D', piste:'Herbe'},
+  // TROT COMMUN
+  'Vincennes':         {corde:'G', piste:'Mâchefer'},
+  'Enghien-Soisy':     {corde:'G', piste:'Sable'},
+  'Cabourg':           {corde:'G', piste:'Sable'},
+  'Caen':              {corde:'D', piste:'Sable'},
+  'Laval':             {corde:'D', piste:'Mâchefer'},
+  'Mauquenchy':        {corde:'G', piste:'Sable'},
+  'Reims':             {corde:'D', piste:'Herbe'},
+  'Meslay-du-Maine':   {corde:'D', piste:'Mâchefer'},
+  'Chatelet':          {corde:'G', piste:'Sable'},
+  'Le Croisé-Laroche': {corde:'G', piste:'Mâchefer'},
+  'Argentan':          {corde:'D', piste:'Sable'},
+  'Graignes':          {corde:'G', piste:'Herbe'},
+  'Marseille-Vivaux':  {corde:'G', piste:'Sable'},
+  'Rouen-Trot':        {corde:'D', piste:'Sable'},
+  'Amiens':            {corde:'D', piste:'Sable'},
+};
+
+// Piste dynamique pour Chantilly selon la semaine
+function venueData(name, week) {
+  const w = week || (G.stable ? G.week : 1);
+  if (name === 'Chantilly') {
+    const piste = (w <= 12 || w >= 40) ? 'PSF' : 'Herbe';
+    return {corde:'D', piste};
+  }
+  return VENUES[name] || {corde:'G', piste:'Herbe'};
+}
+const PISTE_EMOJI = {'Herbe':'🌱','Sable':'🟡','PSF':'⚪','Mâchefer':'⚫','Pouzzolane':'🔴'};
+
+// ============ CALENDRIER ANNUEL (52 semaines) ============
+const CALENDAR = {
+  attele: [
+    {wk:1,name:'Prix du Calvados',venue:'Vincennes',dist:'2700m',grade:'G2',prize:75000},
+    {wk:2,name:'Prix de Belgique',venue:'Vincennes',dist:'2700m',grade:'G1',prize:200000},
+    {wk:3,name:'Prix de Bourgogne',venue:'Vincennes',dist:'2700m',grade:'G2',prize:110000},
+    {wk:4,name:"Prix d'Amérique",venue:'Vincennes',dist:'2700m',grade:'G1',prize:1100000},
+    {wk:5,name:"Prix de l'Île-de-France",venue:'Vincennes',dist:'2700m',grade:'G2',prize:130000},
+    {wk:6,name:'Prix de France Speed Race',venue:'Vincennes',dist:'2700m',grade:'G1',prize:600000},
+    {wk:7,name:'Prix de Bourbonnais',venue:'Vincennes',dist:'2700m',grade:'G3',prize:65000},
+    {wk:8,name:'Prix de Paris Marathon Race',venue:'Vincennes',dist:'4150m',grade:'G1',prize:450000},
+    {wk:9,name:'Prix des Centaures',venue:'Vincennes',dist:'2850m',grade:'G2',prize:90000},
+    {wk:10,name:'Grand Critérium de Vitesse',venue:'Cagnes-sur-Mer',dist:'2925m',grade:'G1',prize:380000},
+    {wk:16,name:"Prix de l'Atlantique",venue:'Enghien-Soisy',dist:'2150m',grade:'G1',prize:200000},
+    {wk:19,name:'Prix des Ducs de Normandie',venue:'Caen',dist:'2450m',grade:'G2',prize:130000},
+    {wk:25,name:'Prix René Ballière',venue:'Vincennes',dist:'2100m',grade:'G1',prize:280000},
+    {wk:26,name:'Prix Albert Viel',venue:'Vincennes',dist:'2700m',grade:'G1',prize:300000},
+    {wk:37,name:'Critérium des 4 ans',venue:'Vincennes',dist:'2700m',grade:'G1',prize:350000},
+    {wk:38,name:'Critérium des 5 ans',venue:'Vincennes',dist:'2700m',grade:'G1',prize:300000},
+    {wk:39,name:'Prix des Élites',venue:'Vincennes',dist:'2850m',grade:'G1',prize:200000},
+    {wk:41,name:'Saint-Léger des Trotteurs',venue:'Caen',dist:'2950m',grade:'G2',prize:120000},
+    {wk:47,name:'Prix de Bretagne',venue:'Vincennes',dist:'2700m',grade:'G1',prize:160000},
+    {wk:49,name:'Finale Grand National du Trot',venue:'Vincennes',dist:'2850m',grade:'G2',prize:180000},
+    {wk:50,name:'Prix du Bourbonnais',venue:'Vincennes',dist:'2700m',grade:'G2',prize:100000},
+    {wk:51,name:'Critérium Continental',venue:'Vincennes',dist:'2700m',grade:'G1',prize:250000},
+    {wk:52,name:'Prix Ténor de Baune',venue:'Vincennes',dist:'2700m',grade:'G2',prize:120000},
+  ],
+  monte: [
+    {wk:2,name:'Prix Jag de Bellouet',venue:'Vincennes',dist:'2700m',grade:'G2',prize:80000},
+    {wk:3,name:'Prix de Cornulier',venue:'Vincennes',dist:'2700m',grade:'G1',prize:350000},
+    {wk:5,name:"Prix de l'Île-de-France Monté",venue:'Vincennes',dist:'2700m',grade:'G2',prize:90000},
+    {wk:6,name:'Prix de Vincennes',venue:'Vincennes',dist:'2700m',grade:'G2',prize:75000},
+    {wk:9,name:'Prix Henri Desmontils',venue:'Vincennes',dist:'2700m',grade:'G2',prize:80000},
+    {wk:16,name:'Prix de Londres',venue:'Enghien-Soisy',dist:'2150m',grade:'G2',prize:90000},
+    {wk:25,name:'Prix Ceneri Forcinal',venue:'Vincennes',dist:'2700m',grade:'G2',prize:85000},
+    {wk:26,name:'Prix Raoul Ballière',venue:'Vincennes',dist:'2850m',grade:'G2',prize:90000},
+    {wk:37,name:'Prix Pierre Plazen',venue:'Vincennes',dist:'2700m',grade:'G2',prize:75000},
+    {wk:39,name:'Prix des Élites Monté',venue:'Vincennes',dist:'2850m',grade:'G1',prize:160000},
+    {wk:47,name:'Prix Louis Forcinal',venue:'Vincennes',dist:'2700m',grade:'G3',prize:55000},
+    {wk:51,name:'Prix Hervé Céran-Maillard',venue:'Vincennes',dist:'2700m',grade:'G2',prize:80000},
+  ],
+  plat: [
+    {wk:17,name:'Prix Ganay',venue:'ParisLongchamp',dist:'2100m',grade:'G1',prize:400000},
+    {wk:18,name:"Poule d'Essai des Poulains",venue:'ParisLongchamp',dist:'1600m',grade:'G1',prize:450000},
+    {wk:18,name:"Poule d'Essai des Pouliches",venue:'ParisLongchamp',dist:'1600m',grade:'G1',prize:400000},
+    {wk:20,name:"Prix d'Ispahan",venue:'ParisLongchamp',dist:'1850m',grade:'G1',prize:350000},
+    {wk:20,name:'Prix Vicomtesse Vigier',venue:'ParisLongchamp',dist:'3100m',grade:'G2',prize:130000},
+    {wk:22,name:'Prix du Jockey Club',venue:'Chantilly',dist:'2100m',grade:'G1',prize:1500000},
+    {wk:24,name:'Prix de Diane',venue:'Chantilly',dist:'2100m',grade:'G1',prize:1000000},
+    {wk:26,name:'Grand Prix de Saint-Cloud',venue:'Saint-Cloud',dist:'2400m',grade:'G1',prize:600000},
+    {wk:27,name:'Prix Jean Prat',venue:'Deauville',dist:'1600m',grade:'G1',prize:400000},
+    {wk:28,name:'Grand Prix de Paris',venue:'ParisLongchamp',dist:'2400m',grade:'G1',prize:600000},
+    {wk:31,name:'Prix Rothschild',venue:'Deauville',dist:'1600m',grade:'G1',prize:350000},
+    {wk:32,name:'Prix Maurice de Gheest',venue:'Deauville',dist:'1300m',grade:'G1',prize:400000},
+    {wk:33,name:'Prix Jacques Le Marois',venue:'Deauville',dist:'1600m',grade:'G1',prize:1000000},
+    {wk:34,name:'Prix Morny',venue:'Deauville',dist:'1200m',grade:'G1',prize:500000},
+    {wk:34,name:'Prix Jean Romanet',venue:'Deauville',dist:'2000m',grade:'G1',prize:350000},
+    {wk:36,name:'Qatar Arc Trials',venue:'ParisLongchamp',dist:'2400m',grade:'G2',prize:160000},
+    {wk:40,name:"Prix de l'Arc de Triomphe",venue:'ParisLongchamp',dist:'2400m',grade:'G1',prize:5000000},
+    {wk:43,name:'Critérium International',venue:'Saint-Cloud',dist:'1600m',grade:'G1',prize:200000},
+    {wk:43,name:'Prix Royal-Oak',venue:'Saint-Cloud',dist:'3100m',grade:'G1',prize:250000},
+    {wk:43,name:'Critérium de Saint-Cloud',venue:'Saint-Cloud',dist:'2000m',grade:'G1',prize:250000},
+  ],
+  obstacle: [
+    {wk:11,name:'Prix Aguado',venue:'Auteuil',dist:'3600m',grade:'L',prize:80000},
+    {wk:14,name:'Prix Murat',venue:'Auteuil',dist:'4400m',grade:'G3',prize:100000},
+    {wk:17,name:'Prix Hypothèse',venue:'Auteuil',dist:'3600m',grade:'L',prize:75000},
+    {wk:20,name:'Grand Steeple-Chase de Paris',venue:'Auteuil',dist:'5500m',grade:'G1',prize:900000},
+    {wk:20,name:'Grande Course de Haies',venue:'Auteuil',dist:'5100m',grade:'G1',prize:500000},
+    {wk:21,name:'Prix La Haye Jousselin',venue:'Auteuil',dist:'5500m',grade:'G1',prize:280000},
+    {wk:23,name:'Prix Ferdinand Dufaure',venue:'Auteuil',dist:'4400m',grade:'G2',prize:150000},
+    {wk:24,name:'Prix Alain du Breil',venue:'Auteuil',dist:'4100m',grade:'G2',prize:130000},
+    {wk:39,name:'Prix Maurice Gillois',venue:'Auteuil',dist:'4400m',grade:'G2',prize:140000},
+    {wk:44,name:'Prix Cambacérès',venue:'Auteuil',dist:'3600m',grade:'G1',prize:200000},
+    {wk:46,name:'Prix Renaud du Vivier',venue:'Auteuil',dist:'4100m',grade:'G1',prize:220000},
+    {wk:46,name:'Prix du Président de la République',venue:'Auteuil',dist:'4400m',grade:'G2',prize:160000},
+  ],
+};
+const GRADE_LABEL = {G1:'Groupe I',G2:'Groupe II',G3:'Groupe III',L:'Listed',P:'Course'};
+const GRADE_DIFF = {G1:6,G2:5,G3:4,L:3,P:2};
+
+
+// ============ STATS PAR DISCIPLINE (12 stats) ============
+// Chaque stat : { key, label, color, trainable, weight }
+// forma et potentiel sont hors tableau (champs séparés sur h)
+// prefPiste et prefCorde sont des attributs qualitatifs, pas des stats numériques
+const DISC_STATS = {
+  plat: [
+    { key:'vitesse',       label:'Vitesse',       color:'#C9A84C', trainable:true,  weight:0.18 },
+    { key:'endurance',     label:'Endurance',     color:'#27AE60', trainable:true,  weight:0.15 },
+    { key:'acceleration',  label:'Accélération',  color:'#E67E22', trainable:true,  weight:0.13 },
+    { key:'mental',        label:'Mental',        color:'#8E44AD', trainable:true,  weight:0.10 },
+    { key:'maniabilite',   label:'Maniabilité',   color:'#2980B9', trainable:true,  weight:0.09 },
+    { key:'poids',         label:'Poids',         color:'#7F8C8D', trainable:true,  weight:0.07 },
+    { key:'depart',        label:'Départ',        color:'#E74C3C', trainable:true,  weight:0.10 },
+    { key:'adaptabilite',  label:'Adaptabilité',  color:'#16A085', trainable:true,  weight:0.09 },
+    { key:'sante',         label:'Santé',         color:'#27AE60', trainable:true,  weight:0.09 },
+    // potentiel, forme : hors tableau — champs h.potential et h.forma
+  ],
+  obstacle: [
+    { key:'technique',     label:'Technique saut',color:'#C9A84C', trainable:true,  weight:0.18 },
+    { key:'endurance',     label:'Endurance',     color:'#27AE60', trainable:true,  weight:0.16 },
+    { key:'bravoure',      label:'Bravoure',      color:'#E74C3C', trainable:true,  weight:0.13 },
+    { key:'equilibre',     label:'Équilibre',     color:'#2980B9', trainable:true,  weight:0.12 },
+    { key:'vitesse',       label:'Vitesse galop', color:'#E67E22', trainable:true,  weight:0.11 },
+    { key:'mental',        label:'Mental',        color:'#8E44AD', trainable:true,  weight:0.09 },
+    { key:'sante',         label:'Santé',         color:'#27AE60', trainable:true,  weight:0.08 },
+    { key:'experience',    label:'Expérience',    color:'#7F8C8D', trainable:true,  weight:0.07 },
+    { key:'adaptabilite',  label:'Terrain',       color:'#16A085', trainable:true,  weight:0.06 },
+  ],
+  attele: [
+    { key:'vitesse',       label:'Vitesse',       color:'#C9A84C', trainable:true,  weight:0.18 },
+    { key:'surete',        label:'Sûreté allure', color:'#6B4C9A', trainable:true,  weight:0.16 },
+    { key:'driving',       label:'Driving',       color:'#E67E22', trainable:true,  weight:0.13 },
+    { key:'depart',        label:'Départ',        color:'#E74C3C', trainable:true,  weight:0.10 },
+    { key:'endurance',     label:'Endurance',     color:'#27AE60', trainable:true,  weight:0.12 },
+    { key:'mental',        label:'Mental',        color:'#8E44AD', trainable:true,  weight:0.09 },
+    { key:'puissance',     label:'Puissance',     color:'#2980B9', trainable:true,  weight:0.08 },
+    { key:'adaptabilite',  label:'Terrain',       color:'#16A085', trainable:true,  weight:0.06 },
+    { key:'sante',         label:'Santé',         color:'#27AE60', trainable:true,  weight:0.08 },
+  ],
+  monte: [
+    { key:'trot',          label:'Trot',          color:'#C9A84C', trainable:true,  weight:0.18 },
+    { key:'surete',        label:'Sûreté allure', color:'#6B4C9A', trainable:true,  weight:0.16 },
+    { key:'equilibre',     label:'Équilibre',     color:'#2980B9', trainable:true,  weight:0.13 },
+    { key:'endurance',     label:'Endurance',     color:'#27AE60', trainable:true,  weight:0.12 },
+    { key:'reactivite',    label:'Réactivité',    color:'#E67E22', trainable:true,  weight:0.10 },
+    { key:'mental',        label:'Mental',        color:'#8E44AD', trainable:true,  weight:0.09 },
+    { key:'depart',        label:'Départ',        color:'#E74C3C', trainable:true,  weight:0.08 },
+    { key:'adaptabilite',  label:'Terrain',       color:'#16A085', trainable:true,  weight:0.06 },
+    { key:'puissance',     label:'Puissance',     color:'#2980B9', trainable:true,  weight:0.08 },
+  ],
+};
+
+// Types évolution (vitesse de montée en puissance)
+// picAge = âge du pic de la courbe de gain
+const EVOL_TYPES = {
+  precoce: { label:'Précoce', picAge:4, desc:'Plafond atteint tôt' },
+  normal:  { label:'Normal',  picAge:6, desc:'Progression régulière' },
+  tardif:  { label:'Tardif',  picAge:8, desc:'Explose sur le tard' },
+};
+
+// Types déclin (à partir de quel âge les stats baissent)
+const DECLIN_TYPES = {
+  precoce: { label:'Précoce', startAge:5,  desc:'Déclin dès 5-6 ans' },
+  normal:  { label:'Normal',  startAge:8,  desc:'Declin a 8-9 ans'   },
+  long:    { label:'Long',    startAge:11, desc:"Tient jusqu'a 11-12 ans" },
+};
+
+// Multiplicateur de gain entraînement selon âge + type évolution/déclin
+function trainGainMultiplier(h) {
+  const age = h.age;
+  const et = EVOL_TYPES[h.evolType] || EVOL_TYPES.normal;
+  const dt = DECLIN_TYPES[h.declinType] || DECLIN_TYPES.normal;
+  // Phase de progression : monte vers le pic
+  if (age <= et.picAge) {
+    // de 0.7 à 1.0 entre 2 ans et picAge
+    return clamp(0.7 + (age - 2) / (et.picAge - 2) * 0.3, 0.7, 1.0);
+  }
+  // Phase de déclin
+  if (age >= dt.startAge) {
+    const yearsPast = age - dt.startAge;
+    return clamp(1.0 - yearsPast * 0.08, 0.2, 1.0);
+  }
+  // Phase plateau : entre picAge et startAge, gain plein
+  return 1.0;
+}
+
+// ============ FORME CALCULÉE ============
+// Forme = (condition physique + mental du moment) / 2
+// Condition physique = 100 - fatigue (linéaire)
+// Mental du moment = stat mental + bonus/malus situationnels
+
+function getForma(h) {
+  // Condition physique : inverse de la fatigue
+  const conditionPhysique = clamp(100 - (h.fatigue||0), 0, 100);
+
+  // Mental du moment : base = stat mental du cheval
+  const mentalBase = h.mental || 50;
+  let mentalMoment = mentalBase;
+
+  // Bonus victoire récente : +10, décroît de 3 par semaine
+  const winBonus = h.recentWinBonus || 0;
+  mentalMoment += winBonus;
+
+  // Malus série de défaites : -5 par défaite consécutive, max -20
+  const loseStreak = h.loseStreak || 0;
+  mentalMoment -= Math.min(20, loseStreak * 5);
+
+  // Malus inactivité > 4 semaines sans course
+  const weeksSinceRace = h.weeksSinceRace || 0;
+  if (weeksSinceRace > 10) mentalMoment -= 5;
+
+  mentalMoment = clamp(mentalMoment, 10, 100);
+
+  return Math.round((conditionPhysique + mentalMoment) / 2);
+}
+
+// Appelé après une course pour mettre à jour les bonus/malus mentaux
+function updateMentalAfterRace(h, pos) {
+  // Victoire
+  if (pos === 1) {
+    h.recentWinBonus = 10;
+    h.loseStreak = 0;
+  }
+  // Top 3 : pas de bonus mais arrête la série de défaites
+  else if (pos !== 'DAI' && pos <= 3) {
+    h.loseStreak = 0;
+    if (h.recentWinBonus > 0) h.recentWinBonus = Math.max(0, h.recentWinBonus - 3);
+  }
+  // Défaite ou DAI
+  else {
+    h.loseStreak = (h.loseStreak||0) + 1;
+    if (h.recentWinBonus > 0) h.recentWinBonus = Math.max(0, h.recentWinBonus - 5);
+  }
+  h.weeksSinceRace = 0;
+}
+
+// Bonus de progression post-course (silencieux)
+// La compétition développe le cheval, surtout les jeunes
+function applyRaceProgressBonus(h, pos) {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const statsDef = DISC_STATS[dKey] || DISC_STATS.plat;
+  const age = h.age;
+
+  // Bonus de base selon résultat
+  const resultMult = pos === 1 ? 1.4 : pos <= 3 ? 1.1 : pos !== 'DAI' ? 0.8 : 0.3;
+
+  // Bonus jeunesse : fort avant 5 ans, s'estompe jusqu'à 8 ans, nul après
+  const youthMult = age <= 4 ? 1.5 : age <= 5 ? 1.2 : age <= 6 ? 0.9 : age <= 8 ? 0.5 : 0.2;
+
+  // Probabilité de base : ~40% par stat, modulée par résultat et âge
+  const baseProb = 0.40 * resultMult * youthMult;
+
+  // Sélectionner 1-2 stats aléatoires parmi les stats clés (poids élevé)
+  const keyStats = statsDef.filter(s => s.weight >= 0.10 && s.key !== 'sante');
+  const shuffled = keyStats.slice().sort(() => Math.random() - 0.5).slice(0, 2);
+
+  shuffled.forEach(s => {
+    if (h[s.key] === undefined) return;
+    const cap = h.potential;
+    if (h[s.key] >= cap) return;
+    const gap = cap - h[s.key];
+    const gapFactor = Math.min(1, gap / 15);
+    const prob = clamp(baseProb * gapFactor, 0.02, 0.75);
+    if (Math.random() < prob) {
+      h[s.key] = Math.min(cap, h[s.key] + 1);
+    }
+  });
+}
+
+// Appelé chaque semaine pour décroître les bonus/malus temporaires
+function decayMentalBonuses(h) {
+  if (h.recentWinBonus > 0) h.recentWinBonus = Math.max(0, h.recentWinBonus - 3);
+  h.weeksSinceRace = (h.weeksSinceRace||0) + 1;
+}
+
+// Calcul de l'Overall pondéré selon la discipline
+function calcOverall(h) {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const stats = DISC_STATS[dKey] || DISC_STATS.plat;
+  let totalW = 0, sum = 0;
+  stats.forEach(s => {
+    const val = h[s.key] || 0;
+    sum += val * s.weight;
+    totalW += s.weight;
+  });
+  return Math.round(sum / totalW);
+}
+
+// Régularité : stat transverse affectant la variance des résultats
+// On la calcule comme moyenne de mental + (surete si trot sinon adaptabilite)
+function regulariteScore(h) {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const m = h.mental || 50;
+  if (dKey === 'attele' || dKey === 'monte') return Math.round((m + (h.surete||50)) / 2);
+  return Math.round((m + (h.adaptabilite||50)) / 2);
+}
+
+// ============ STATE ============
+let G = {
+  stable: null, money: 15000, week: 1, season: 1, day: 1, prestige: 1, totalWins: 0,
+  horses: [], foals: [], staff: [],
+  selectedHorse: null, selectedTraining: null,
+  raceState: 'select', raceResult: null, currentRace: null, currentOdds: null,
+  marketHorses: [], breedMare: null, breedStallion: null,
+  selectedBet: 0, rivals: [], seasonWins: 0,
+  selectedProg: null, selectedIntens: null,
+  loan: 0, loanWeeksLeft: 0, loanRate: 0,
+  todayMeetings: null, openMeeting: null, currentMI: null, currentRI: null,
+  entries: [], engageHorseId: null,
+};
+let selectedDisc = null;
+
+const HORSE_FIRST = ['Éclair','Tempête','Roi','Belle','Flash','Tonnerre','Star','Prince','Dame','Foudre','Vaillant','Étoile','Mistral','Aurore','Titan','Velours','Comète','Diamant','Galop','Soleil','Idéal','Quézaco','Hermès','Jupiter','Kaiser'];
+const HORSE_LAST = ['de Vincennes','du Pont','de Bellouet','d\'Or','de Lou','du Vivier','de Guez','Williams','de Chenu','du Goutier','Madrik','de Bréhal','Josselyn','d\'Urzy','de Brion','de Carsi','Speed','Royal','de Crouay'];
+const HORSE_EMOJIS = ['🐴','🐎'];
+const COATS = ['Bai','Alezan','Gris','Noir','Bai-brun'];
+const RIVAL_NAMES = ['Écurie Bazire','Haras de Montfort','Écurie Nivard','Stud Lefèbvre','Écurie Raffin','Haras du Lys','Écurie Abrivard','Stud des Forges','Écurie Dubois','Haras de Grosbois','Écurie Locqueneux','Stud Atlantique','Écurie Lecanu','Haras du Bourg','Écurie Verva','Stud Royal','Écurie Martens','Haras de Vire','Écurie Gout','Stud de l\'Aube'];
+
+// ============ NAV ============
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+id).classList.add('active');
+  if (id==='setup') renderDiscCards();
+  if (id==='hub') updateHub();
+  if (id==='market') updateMarket();
+  if (id==='training') updateTraining();
+  if (id==='race') updateRace();
+  if (id==='breeding') updateBreeding();
+}
+
+// ============ SETUP ============
+function renderDiscCards() {
+  document.getElementById('disc-cards').innerHTML = Object.entries(DISCIPLINES).map(([key,d]) => `
+    <div class="disc-card ${selectedDisc===key?'selected':''}" onclick="selectDisc('${key}')">
+      <div class="disc-emoji">${d.emoji}</div>
+      <div class="disc-info">
+        <div class="disc-name">${d.name}</div>
+        <div class="disc-desc">${d.desc}</div>
+        <div class="disc-meta">${d.meta}</div>
+      </div>
+    </div>`).join('');
+}
+function selectDisc(k) { selectedDisc = k; renderDiscCards(); }
+
+function createStable() {
+  const name = document.getElementById('stable-name-input').value.trim();
+  const owner = document.getElementById('owner-name-input').value.trim();
+  if (!name) { showNotif('⚠️ Nomme ton écurie'); return; }
+  if (!owner) { showNotif('⚠️ Entre ton nom'); return; }
+  if (!selectedDisc) { showNotif('⚠️ Choisis une discipline'); return; }
+  G.stable = { name, owner, disc: selectedDisc };
+  const m = generateHorse(52,'M'); m.name='Premier '+HORSE_LAST[rnd(0,HORSE_LAST.length-1)]; m.age=4; G.horses.push(m);
+  const f = generateHorse(50,'F'); G.horses.push(f);
+  initRivals();
+  refreshMarketHorses();
+  showNotif('🏇 Écurie fondée en '+DISCIPLINES[selectedDisc].name+' !');
+  showScreen('hub');
+}
+
+// ============ RIVAUX ============
+function initRivals() {
+  G.rivals = RIVAL_NAMES.slice(0,20).map(name => ({ name, rating: rnd(48,72), seasonWins: 0, totalWins: rnd(0,6) }));
+}
+function simulateRivals() {
+  G.rivals.forEach(r => {
+    if (Math.random() < r.rating/160) { r.seasonWins++; r.totalWins++; }
+    if (Math.random() < 0.12) r.rating = Math.min(92, r.rating+1);
+  });
+}
+function getSeasonRanking() {
+  const all = [{ name: G.stable.name, wins: G.seasonWins, isPlayer: true }, ...G.rivals.map(r=>({name:r.name, wins:r.seasonWins, isPlayer:false}))];
+  return all.sort((a,b)=>b.wins-a.wins);
+}
+
+// ============ HORSE GEN ============
+function disc() { return DISCIPLINES[G.stable.disc]; }
+
+function generateHorse(baseOverall, forceSex, parents) {
+  const d = disc();
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const statsDef = DISC_STATS[dKey] || DISC_STATS.plat;
+  const ov = baseOverall || rnd(42,75);
+  const sex = forceSex || (Math.random()<0.5?'M':'F');
+
+  // Types évolution et déclin — hérités à 60% du père sinon tiré au sort
+  const evolKeys  = Object.keys(EVOL_TYPES);
+  const declinKeys = Object.keys(DECLIN_TYPES);
+  const evolType  = parents ? (Math.random()<0.6 ? parents.m.evolType  : evolKeys[rnd(0,2)])  : evolKeys[rnd(0,2)];
+  const declinType= parents ? (Math.random()<0.6 ? parents.m.declinType: declinKeys[rnd(0,2)]): declinKeys[rnd(0,2)];
+
+  // Potentiel — héréditaire, base figée à la naissance
+  // potentialBase = jamais modifiable. potential = potentialBase + bonus entraînement (max +10)
+  let potentialBase;
+  if (parents) {
+    const studBonus = G.staff.find(x=>x.id==='stud')?5:0;
+    potentialBase = clamp(Math.round((parents.m.potentialBase+parents.f.potentialBase)/2)+rnd(0,12)+studBonus,50,95);
+  } else {
+    potentialBase = clamp(ov+rnd(5,22),ov,95);
+  }
+  const potential = potentialBase; // potentiel courant = base au départ
+
+  // Génération des 9 stats numériques de la discipline
+  const statVals = {};
+  statsDef.forEach(s => {
+    if (parents) {
+      statVals[s.key] = clamp(Math.round((parents.m[s.key]||ov)+(parents.f[s.key]||ov))/2+rnd(-8,12),25,92);
+    } else {
+      // variance autour de l'overall selon importance de la stat
+      const spread = s.weight > 0.14 ? 8 : s.weight > 0.09 ? 12 : 16;
+      statVals[s.key] = clamp(ov+rnd(-spread,spread),25,90);
+    }
+  });
+
+  // Sûreté d'allure (trot) — stat clé déjà dans DISC_STATS attele/monte
+  // Pour plat/obstacle on fixe surete=95 (pas de DAI)
+  if (!d.dai) statVals.surete = 95;
+
+  // prefCorde et prefPiste — attributs qualitatifs hérités ou tirés
+  const cordeOpts = d.dai ? ['—'] : ['G','D','—'];
+  const allPistes = ['Herbe','Sable','PSF','Mâchefer','Pouzzolane'];
+  const prefCorde = parents ? (Math.random()<0.6 ? parents.m.prefCorde : cordeOpts[rnd(0,cordeOpts.length-1)]) : cordeOpts[rnd(0,cordeOpts.length-1)];
+  const prefPiste = parents ? (Math.random()<0.6 ? parents.m.prefPiste : allPistes[rnd(0,allPistes.length-1)]) : allPistes[rnd(0,allPistes.length-1)];
+
+  // Compteur d'entraînements intensifs pour le bonus potentiel cumulatif
+  // Toutes les 8 séances intensives -> tentative +1 potentiel (plafonné potentialBase+10)
+  const trainCount = 0;
+
+  return {
+    id: Date.now()+Math.random()+rnd(0,9999),
+    name: HORSE_FIRST[rnd(0,HORSE_FIRST.length-1)]+' '+HORSE_LAST[rnd(0,HORSE_LAST.length-1)],
+    emoji: HORSE_EMOJIS[rnd(0,1)], sex, coat: COATS[rnd(0,COATS.length-1)],
+    breed: d.breed, age: parents?2:rnd(3,8),
+    ...statVals,
+    prefCorde, prefPiste,
+    evolType, declinType, potentialBase, potential,
+    forma: rnd(65,100), wins:0, races:0, earnings:0, injured:false,
+    fatigue:0, lastRaceDay:-99, injuryWeeks:0, trainCount,
+    sire: parents?parents.m.name:null, dam: parents?parents.f.name:null,
+    trainProgram: 'balanced', trainIntensity: 'normal',
+    recentWinBonus: 0, loseStreak: 0, weeksSinceRace: 0,
+  };
+}
+
+// calcOverall défini dans DISC_STATS (pondéré par discipline)
+// Résistance à la fatigue, dérivée du niveau et du potentiel du cheval.
+// Renvoie un facteur ~0.7 (cheval faible) à ~1.35 (crack). Plus c'est haut, mieux il encaisse et récupère.
+function stamina(h){
+  const ov=calcOverall(h);
+  const base=(ov-40)/60;            // 0 à ~0.9 selon l'overall (40->100)
+  const potBonus=((h.potential||ov)-ov)/200; // léger bonus si gros potentiel
+  let s=0.75+base*0.5+potBonus;     // ~0.75 à ~1.3
+  if (Math.floor(h.age)>=11) s-=0.1; // les vétérans récupèrent moins bien
+  if (Math.floor(h.age)<=3) s-=0.05; // les très jeunes sont plus fragiles
+  return clamp(s,0.6,1.4);
+}
+function starRating(p){ const s=Math.min(5,Math.max(1,Math.round(p/20))); return '★'.repeat(s)+'☆'.repeat(5-s); }
+
+// statNames : renvoie les 9 labels de la discipline courante (pour compatibilité)
+function statNames() {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  return (DISC_STATS[dKey]||DISC_STATS.plat).map(s=>s.label);
+}
+// statKeys : renvoie les clés internes dans l'ordre
+function statKeys() {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  return (DISC_STATS[dKey]||DISC_STATS.plat).map(s=>s.key);
+}
+function statColor(key) {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const s = (DISC_STATS[dKey]||DISC_STATS.plat).find(x=>x.key===key);
+  return s ? s.color : '#888';
+}
+
+// ============ HUB ============
+function updateHub() {
+  if (!G.stable) return;
+  saveGame();
+  const d = disc();
+  document.getElementById('hub-money').textContent = '€'+G.money.toLocaleString();
+  document.getElementById('hub-stable-name').textContent = G.stable.name;
+  document.getElementById('hub-stable-meta').textContent = G.stable.owner+' • '+G.staff.length+' staff';
+  document.getElementById('hub-disc-badge').textContent = d.emoji+' '+d.name+' • '+d.breed;
+  document.getElementById('hub-horses').textContent = G.horses.length;
+  document.getElementById('hub-wins').textContent = G.totalWins;
+  document.getElementById('hub-prestige').textContent = '⭐'.repeat(G.prestige);
+  document.getElementById('hub-season').textContent = 'A.'+G.season;
+  document.getElementById('hub-week').textContent = 'S.'+G.week;
+  const list = document.getElementById('hub-horses-list');
+  list.innerHTML = G.horses.length===0 ? `<div class="empty-state"><div class="empty-icon">🐴</div><div style="font-size:14px">Aucun cheval. Va aux ventes.</div></div>` : G.horses.map(h=>horseCardHTML(h)).join('');
+}
+
+function horseCardHTML(h) {
+  const ov = calcOverall(h);
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const statsDef = DISC_STATS[dKey] || DISC_STATS.plat;
+  // Afficher les 4 stats les plus importantes (poids > 0.11)
+  const topStats = statsDef.filter(s=>s.weight>=0.11).slice(0,4);
+  const barsHtml = topStats.map(s=>miniBar(s.label, h[s.key]||0, s.color)).join('');
+  const evolLabel = (EVOL_TYPES[h.evolType]||EVOL_TYPES.normal).label;
+  const declinLabel = (DECLIN_TYPES[h.declinType]||DECLIN_TYPES.normal).label;
+  return `<div class="horse-card" onclick="showHorseDetail('${h.id}')">
+    <div class="horse-card-row">
+      <div class="horse-emoji">${h.emoji}</div>
+      <div class="horse-info">
+        <div class="horse-name">${h.name} <span style="font-size:12px">${h.sex==='M'?'♂':'♀'}</span></div>
+        <div class="horse-meta">${Math.floor(h.age)} ans • ${h.coat} • ${h.breed} <span class="star-rating">${starRating(h.potential)}</span></div>
+        <div class="horse-record" style="color:var(--green)">${h.wins}V/${h.races}C • Forme: ${getForma(h)}%${h.injured?' • <span style="color:var(--red)">🤕</span>':''}
+        <span style="font-size:10px;color:var(--muted)"> • ${evolLabel}/${declinLabel}</span></div>
+      </div>
+      <div class="horse-overall">${ov}</div>
+    </div>
+    <div class="mini-bars">${barsHtml}</div>
+  </div>`;
+}
+function miniBar(label,val,color){ return `<div class="mini-bar-row"><div class="mini-bar-label">${label}</div><div class="mini-bar-wrap"><div class="mini-bar-fill" style="width:${val}%;background:${color}"></div></div><div class="mini-bar-val">${val}</div></div>`; }
+
+// ── Avancement par jours avec interruption au jour de course ──────────────────
+// G.day = jour courant dans la semaine (1=lun ... 7=dim)
+function meetingDayOfWeek(venueIdx) {
+  // Répartit les réunions : mer(3), ven(5), dim(7), puis lun(1), mar(2), jeu(4), sam(6)
+  const slots = [3,5,7,1,2,4,6];
+  return slots[venueIdx % slots.length];
+}
+
+// Cherche le prochain jour de course cette semaine >= G.day
+function nextRaceDay() {
+  const weekEntries = G.entries.filter(e=>e.season===G.season && e.week===G.week);
+  if (!weekEntries.length) return null;
+  weekEntries.forEach(e => {
+    if (!e.raceDay) {
+      const meetings = buildMeetingsFor(G.season, G.week, G.stable.disc);
+      const mi = meetings.findIndex(mt=>mt.venue===e.venue);
+      e.raceDay = meetingDayOfWeek(mi>=0 ? mi : 0);
+    }
+  });
+  const futureDays = weekEntries.map(e=>e.raceDay).filter(d=>d>=G.day);
+  if (!futureDays.length) return null;
+  return Math.min(...futureDays);
+}
+
+// Déclin des stats selon declinType et âge
+function applyDeclin(h, perWeekFactor) {
+  const dt = DECLIN_TYPES[h.declinType] || DECLIN_TYPES.normal;
+  if (h.age < dt.startAge) return;
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const statsDef = DISC_STATS[dKey] || DISC_STATS.plat;
+  const declinChance = 0.038 * perWeekFactor;
+  if (Math.random() < declinChance) {
+    const trStats = statsDef.filter(s=>s.key!=='sante');
+    const picked = trStats[Math.floor(Math.random()*trStats.length)];
+    if (picked && h[picked.key] > 20) { h[picked.key]--; }
+  }
+}
+
+// Effets biologiques sur la durée (nbDays jours)
+function applyDayEffects(nbDays) {
+  if (nbDays <= 0) return {retired:[], born:[]};
+  const vetBonus = G.staff.find(s=>s.id==='vet') ? 10 : 0;
+  const f = nbDays / 7;
+  const retired=[], born=[];
+  G.horses.forEach(h=>{
+    // Forme calculée via getForma(h) — plus de récup passive stockée
+    h.age  += 0.05 * f;
+    // Récup passive fatigue : seulement si pas de programme (sinon applyWeeklyTraining gère)
+    if (!h.trainProgram) {
+      h.fatigue = Math.max(0, (h.fatigue||0) - Math.round((25+vetBonus)*stamina(h)*f));
+    }
+    if (h.injuryWeeks>0){
+      h.injuryWeeks = Math.max(0, h.injuryWeeks - f);
+      if (h.injuryWeeks<=0){ h.injured=false; showNotif('💚 '+h.name.split(' ')[0]+' rétabli'); }
+    } else { h.injured=false; }
+    applyDeclin(h, f);
+    if (h.age>=13) retired.push(h);
+  });
+  retired.forEach(h=>{ G.horses=G.horses.filter(x=>x.id!==h.id); showNotif(h.name+' part a la retraite ('+Math.floor(h.age)+' ans)'); });
+  G.foals.forEach(fo=>{ fo.weeksLeft-=f; });
+  G.foals.filter(fo=>fo.weeksLeft<=0).forEach(fo=>{ G.horses.push(fo.horse); born.push(fo); showNotif('Poulain ne : '+fo.horse.name+' !'); });
+  G.foals = G.foals.filter(fo=>fo.weeksLeft>0);
+  return {retired, born};
+}
+
+function advanceWeek() {
+  const nrd = nextRaceDay();
+  if (nrd !== null && nrd >= G.day) {
+    // Avancer jusqu'au jour de course
+    const daysToAdvance = nrd - G.day;
+    applyDayEffects(daysToAdvance);
+    G.day = nrd;
+    saveGame();
+    updateHub();
+    showNotif('Jour '+G.day+' - Course(s) a lancer !');
+    G.todayMeetings = buildMeetings();
+    showScreen('race');
+    return;
+  }
+  // Finir la semaine et passer a S+1
+  const daysLeft = 7 - G.day + 1;
+  applyDayEffects(daysLeft);
+  G.week++;
+  G.day = 1;
+  let seasonEnded = false;
+  if (G.week > 52) { G.week=1; G.season++; seasonEnded=true; }
+  const upkeep = G.horses.length*250 + G.staff.length*400;
+  G.money -= upkeep;
+  // Remboursement prêt : mensualité fixe chaque semaine
+  if (G.loan > 0 && G.loanWeeksLeft > 0) {
+    const payment = Math.round(G.loan / G.loanWeeksLeft);
+    const interest = Math.round(payment * G.loanRate);
+    const total = payment + interest;
+    G.money -= total;
+    G.loan -= payment;
+    G.loanWeeksLeft--;
+    if (G.loanWeeksLeft <= 0) { G.loan = 0; showNotif('🏦 Prêt remboursé !'); }
+    else showNotif('🏦 Remboursement: -€'+total.toLocaleString()+' (dont €'+interest.toLocaleString()+' intérêts)');
+  }
+  if (G.money < 0) G.money = 0;
+  // Appliquer le programme d'entraînement hebdomadaire + décrémenter bonus mentaux
+  G.horses.forEach(h => { applyWeeklyTraining(h); decayMentalBonuses(h); });
+  simulateRivals();
+  G.todayMeetings=null; G.openMeeting=null;
+  purgeOldEntries();
+  saveGame(); // Autosave changement de semaine
+  if (seasonEnded) showSeasonReport();
+  else if (true) showNotif('Sem.'+G.week+' - Entretien: -'+upkeep.toLocaleString()+' EUR');
+  updateHub();
+}
+
+function showSeasonReport() {
+  const ranking=getSeasonRanking();
+  const myRank=ranking.findIndex(r=>r.isPlayer)+1;
+  const isChamp=ranking[0].isPlayer;
+  if (isChamp) { G.prestige=Math.min(5,G.prestige+1); G.money+=20000; }
+  document.getElementById('horse-modal-content').innerHTML = `
+    <div class="modal-title">🏆 Fin de Saison ${G.season-1}</div>
+    ${isChamp?`<div class="result-banner first" style="margin-bottom:16px"><div class="result-pos first">👑</div><div class="result-sub first">CHAMPION ${disc().name.toUpperCase()} !</div><div class="result-prize first">+€20,000</div></div>`:`<div style="text-align:center;margin-bottom:16px;font-size:14px;color:var(--muted)">Tu termines <strong style="color:var(--green-dark)">${myRank}e</strong> sur ${ranking.length}</div>`}
+    <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--green-dark)">📊 Classement des éleveurs</div>
+    ${ranking.slice(0,10).map((r,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;margin-bottom:4px;background:${r.isPlayer?'rgba(201,168,76,0.15)':'var(--panel)'}"><div style="font-family:'Playfair Display',serif;font-weight:700;width:24px;color:${i===0?'var(--gold)':'var(--muted)'}">${i+1}</div><div style="flex:1;font-size:13px;font-weight:${r.isPlayer?'700':'500'}">${r.name}${r.isPlayer?' (toi)':''}</div><div style="font-weight:700;color:var(--green)">${r.wins}V</div></div>`).join('')}
+  `;
+  document.getElementById('horse-modal').classList.add('show');
+  G.seasonWins=0; G.rivals.forEach(r=>r.seasonWins=0);
+}
+
+// reconstruit l'objet course "feature" depuis une entrée calendrier (id stable identique au moteur)
+function featureRaceObj(c){
+  return {
+    id:'F-'+G.stable.disc+'-S'+G.season+'-'+c.name.replace(/\s+/g,''),
+    name:c.name, grade:c.grade, gradeLabel:GRADE_LABEL[c.grade], venue:c.venue, distance:c.dist,
+    diff:GRADE_DIFF[c.grade], prize:c.prize, scale:[1,0.4,0.2,0.08], isFeature:true,
+    cond:conditionsForFeature(c), season:G.season, week:c.wk,
+  };
+}
+
+function showCalendarModal() {
+  const cal=(CALENDAR[G.stable.disc]||[]).slice().sort((a,b)=>a.wk-b.wk);
+  const rows=cal.map(c=>{
+    const past=c.wk<G.week, now=c.wk===G.week;
+    const gradeColor=c.grade==='G1'?'var(--gold)':c.grade==='G2'?'var(--green)':c.grade==='G3'?'var(--blue)':'var(--muted)';
+    const race=featureRaceObj(c);
+    const ent=entryForCourse(race.id);
+    const myHorse=ent?G.horses.find(h=>h.id===ent.horseId):null;
+    const nbElig=G.horses.filter(h=>isEligible(h,race)).length;
+    let action='';
+    if (past){ action='<div style="font-size:10px;color:var(--muted)">terminé</div>'; }
+    else if (ent){ action=`<div style="font-size:10px;color:var(--green);font-weight:700">★ ${myHorse?myHorse.name.split(' ')[0]:'engagé'}</div><button onclick="event.stopPropagation();cancelEntryUI('${race.id}')" style="background:none;border:none;color:var(--red);font-size:10px;text-decoration:underline;cursor:pointer">retirer</button>`; }
+    else if (nbElig>0){ action=`<button onclick="event.stopPropagation();openEngagePicker('${c.name.replace(/'/g,"\\'")}',${c.wk})" style="background:var(--green);color:white;border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer">+ Engager</button>`; }
+    else { action='<div style="font-size:9px;color:var(--muted)">aucun éligible</div>'; }
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;margin-bottom:4px;background:${now?'rgba(201,168,76,0.18)':ent?'rgba(27,94,53,0.08)':'var(--panel)'};opacity:${past?0.45:1}">
+      <div style="font-family:'Playfair Display',serif;font-weight:700;width:30px;font-size:12px;color:var(--muted)">S${c.wk}</div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:${now?'700':'600'}">${c.name}</div><div style="font-size:10px;color:var(--muted)">📍 ${c.venue} • ${c.dist} • <span style="color:${gradeColor};font-weight:700">${GRADE_LABEL[c.grade]}</span> • €${(c.prize/1000)}k • <span style="color:var(--purple)">${conditionsForFeature(c).label||condLabelFull(conditionsForFeature(c))}</span></div></div>
+      <div style="text-align:right;min-width:60px">${action}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('horse-modal-content').innerHTML=`
+    <div class="modal-title">📅 Calendrier ${disc().name}</div>
+    <div style="text-align:center;font-size:12px;color:var(--muted);margin-bottom:12px">Saison ${G.season} • Semaine ${G.week}/52<br>Engage tes chevaux à l'avance sur les grandes courses de l'année</div>
+    ${rows}
+    <div style="font-size:11px;color:var(--muted);margin-top:10px;text-align:center">★ = un de tes chevaux est engagé. Tu lanceras la course toi-même la semaine venue.</div>`;
+  document.getElementById('horse-modal').classList.add('show');
+}
+function cancelEntryUI(courseId){ cancelEntry(courseId); showCalendarModal(); }
+
+// Picker : choisir quel cheval éligible engager dans une grande course
+function openEngagePicker(courseName,wk){
+  const c=(CALENDAR[G.stable.disc]||[]).find(x=>x.name===courseName && x.wk===wk);
+  if(!c)return;
+  const race=featureRaceObj(c);
+  const fee=engagementFee(race.prize);
+  // éligibles ET pas déjà engagés ce jour-là ET pas blessés
+  const elig=G.horses.filter(h=>isEligible(h,race) && !h.injured && !horseBusyThatDay(h.id,race.season,race.week));
+  document.getElementById('breed-picker-title').textContent='Engager dans '+c.name;
+  document.getElementById('breed-picker-list').innerHTML=
+    `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">📍 ${c.venue} • S${c.wk} • ${GRADE_LABEL[c.grade]} • ${condLabelFull(race.cond)}<br><strong style="color:var(--dirt)">💶 Frais d'engagement : €${fee.toLocaleString()}</strong> (50% remboursé si forfait)</div>`+
+    (elig.length===0?'<div class="empty-state">Aucun cheval disponible<br><span style="font-size:11px">(éligible, non blessé, libre ce jour)</span></div>':elig.map(h=>{
+      const already=horseEntries(h.id).length;
+      return `<div class="horse-card" onclick="engageFromCalendar('${race.id}','${h.id}')"><div class="horse-card-row"><div class="horse-emoji">${h.emoji}</div><div class="horse-info"><div class="horse-name">${h.name} ${h.sex==='M'?'♂':'♀'}</div><div class="horse-meta">${Math.floor(h.age)} ans • OVR ${calcOverall(h)} • €${h.earnings.toLocaleString()}${already?' • '+already+' engagement(s)':''}</div></div><div class="horse-overall">${calcOverall(h)}</div></div></div>`;
+    }).join(''));
+  document.getElementById('breed-picker').classList.add('show');
+}
+function engageFromCalendar(courseId,horseId){
+  const c=(CALENDAR[G.stable.disc]||[]).find(x=>('F-'+G.stable.disc+'-S'+G.season+'-'+x.name.replace(/\s+/g,''))===courseId);
+  const h=G.horses.find(x=>String(x.id)===String(horseId));
+  if(!c||!h)return;
+  if (enterRace(featureRaceObj(c),h)){ closeModal('breed-picker'); showCalendarModal(); }
+}
+
+// ============ PLANNING 3 SEMAINES ============
+function showPlanningModal(){
+  let html='<div class="modal-title">📋 Planning — 3 semaines</div>';
+  html+='<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px">Engage tes chevaux à l\'avance. Tu lanceras chaque course toi-même la semaine venue.</div>';
+  for (let w=G.week; w<=Math.min(52,G.week+2); w++){
+    const meetings=buildMeetingsFor(G.season,w,G.stable.disc);
+    const isNow=w===G.week;
+    html+=`<div style="font-family:'Playfair Display',serif;font-weight:800;font-size:15px;color:var(--green-dark);margin:14px 0 8px;border-bottom:2px solid var(--green-dark);padding-bottom:4px">Semaine ${w}${isNow?' (en cours)':''}</div>`;
+    meetings.forEach(mt=>{
+      html+=`<div style="font-size:12px;font-weight:700;color:var(--green);margin:8px 0 4px">🏟️ ${mt.venue}${mt.hasFeature?' ⭐':''}</div>`;
+      mt.races.forEach(r=>{
+        const taken=entryForCourse(r.id);
+        const myHorse=taken?G.horses.find(h=>h.id===taken.horseId):null;
+        const nbElig=G.horses.filter(h=>isEligible(h,r)).length;
+        let btn;
+        if (taken) btn=`<div style="font-size:10px;color:var(--green);font-weight:700">★ ${myHorse?myHorse.name.split(' ')[0]:'engagé'}</div><button onclick="event.stopPropagation();cancelEntryPlanning('${r.id}')" style="background:none;border:none;color:var(--red);font-size:9px;text-decoration:underline;cursor:pointer">retirer</button>`;
+        else if (nbElig>0) btn=`<button onclick="openPlanningPicker('${r.id}',${r.season},${r.week})" style="background:var(--green);color:white;border:none;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:700;cursor:pointer">+ Engager</button>`;
+        else btn='<div style="font-size:9px;color:var(--muted)">aucun éligible</div>';
+        const gradeColor=r.grade==='G1'?'var(--gold)':r.isFeature?'var(--green)':'var(--muted)';
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:${taken?'rgba(27,94,53,0.08)':'var(--panel)'};border-radius:8px;margin-bottom:4px;${r.isFeature?'border-left:3px solid var(--gold)':''}">
+          <div style="flex:1"><div style="font-size:12px;font-weight:600">${r.name}${r.isFeature?' ⭐':''}</div><div style="font-size:10px;color:var(--muted)"><span style="color:${gradeColor};font-weight:700">${r.gradeLabel||r.grade}</span> • €${(r.prize/1000)}k • ${condLabelFull(r.cond)}</div></div>
+          <div style="min-width:56px;text-align:right">${btn}</div>
+        </div>`;
+      });
+    });
+  }
+  document.getElementById('horse-modal-content').innerHTML=html;
+  document.getElementById('horse-modal').classList.add('show');
+}
+function cancelEntryPlanning(courseId){ cancelEntry(courseId); showPlanningModal(); }
+function openPlanningPicker(courseId,season,week){
+  // retrouver la course
+  let race=null;
+  const feat=(CALENDAR[G.stable.disc]||[]).find(c=>featureRaceObj(c).id===courseId);
+  if (feat) race=featureRaceObj(feat); else race=racesOfWeek(parseInt(season),parseInt(week)).find(r=>r.id===courseId);
+  if(!race)return;
+  const fee=engagementFee(race.prize);
+  const elig=G.horses.filter(h=>isEligible(h,race) && !h.injured && !horseBusyThatDay(h.id,race.season,race.week));
+  document.getElementById('breed-picker-title').textContent='Engager dans '+race.name;
+  document.getElementById('breed-picker-list').innerHTML=
+    `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;text-align:center">📍 ${race.venue} • S${race.week} • ${race.gradeLabel||race.grade} • ${condLabelFull(race.cond)}<br><strong style="color:var(--dirt)">💶 Frais : €${fee.toLocaleString()}</strong> (50% remboursé si forfait)</div>`+
+    (elig.length===0?'<div class="empty-state">Aucun cheval disponible<br><span style="font-size:11px">(éligible, non blessé, libre ce jour)</span></div>':elig.map(h=>`<div class="horse-card" onclick="engagePlanning('${courseId}',${season},${week},'${h.id}')"><div class="horse-card-row"><div class="horse-emoji">${h.emoji}</div><div class="horse-info"><div class="horse-name">${h.name} ${h.sex==='M'?'♂':'♀'}</div><div class="horse-meta">${Math.floor(h.age)} ans • OVR ${calcOverall(h)} • €${h.earnings.toLocaleString()}</div></div><div class="horse-overall">${calcOverall(h)}</div></div></div>`).join(''));
+  document.getElementById('breed-picker').classList.add('show');
+}
+function engagePlanning(courseId,season,week,horseId){
+  let race=null;
+  const feat=(CALENDAR[G.stable.disc]||[]).find(c=>featureRaceObj(c).id===courseId);
+  if (feat) race=featureRaceObj(feat); else race=racesOfWeek(parseInt(season),parseInt(week)).find(r=>r.id===courseId);
+  const h=G.horses.find(x=>String(x.id)===String(horseId));
+  if(!race||!h)return;
+  if (enterRace(race,h)){ closeModal('breed-picker'); showPlanningModal(); }
+}
+
+function showRankingModal() {
+  if (!G.rivals.length) initRivals();
+  const ranking=getSeasonRanking();
+  const myRank=ranking.findIndex(r=>r.isPlayer)+1;
+  document.getElementById('horse-modal-content').innerHTML = `
+    <div class="modal-title">🏆 Classement ${disc().name} — Saison ${G.season}</div>
+    <div style="text-align:center;margin-bottom:14px;font-size:13px;color:var(--muted)">Semaine ${G.week}/52 • Tu es <strong style="color:var(--green-dark)">${myRank}e</strong> sur ${ranking.length}</div>
+    ${ranking.map((r,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;margin-bottom:4px;background:${r.isPlayer?'rgba(201,168,76,0.15)':'var(--panel)'}"><div style="font-family:'Playfair Display',serif;font-weight:700;width:24px;color:${i===0?'var(--gold)':'var(--muted)'}">${i+1}</div><div style="flex:1;font-size:13px;font-weight:${r.isPlayer?'700':'500'}">${r.name}${r.isPlayer?' (toi)':''}</div><div style="font-weight:700;color:var(--green)">${r.wins}V</div></div>`).join('')}
+  `;
+  document.getElementById('horse-modal').classList.add('show');
+}
+
+function showHorseDetail(id) {
+  const h=G.horses.find(x=>String(x.id)===String(id)); if(!h) return;
+  const ov=calcOverall(h);
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const statsDef = DISC_STATS[dKey] || DISC_STATS.plat;
+  const allBars = statsDef.map(s=>miniBar(s.label, h[s.key]||0, s.color)).join('');
+  const evolLabel  = (EVOL_TYPES[h.evolType]  || EVOL_TYPES.normal).label;
+  const declinLabel= (DECLIN_TYPES[h.declinType]||DECLIN_TYPES.normal).label;
+  const resistLabel= ['Fragile','Moyenne','Solide','Très solide','Exceptionnelle'][Math.min(4,Math.floor((stamina(h)-0.6)/0.16))];
+  const surete = h.surete || (disc().dai ? 50 : 95);
+  document.getElementById('horse-modal-content').innerHTML = `
+    <div class="modal-title">${h.emoji} ${h.name}</div>
+    <div style="text-align:center;margin-bottom:16px">
+      <div style="font-family:'Playfair Display',serif;font-size:40px;font-weight:900;color:var(--green)">${ov}</div>
+      <div style="font-size:13px;color:var(--muted)">Overall • Potentiel ${h.potential} <span class="star-rating">${starRating(h.potential)}</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">
+        Base potentiel : ${h.potentialBase||h.potential} • Bonus entraînement : +${(h.potential||0)-(h.potentialBase||h.potential)}
+      </div>
+    </div>
+    <div class="horse-stat-panel">${allBars}</div>
+    <div style="font-size:13px;line-height:2;color:var(--text)">
+      <div>${h.sex==='M'?'♂ Mâle':'♀ Femelle'} • ${Math.floor(h.age)} ans • ${h.breed}</div>
+      <div>🎨 ${h.coat} • 💚 Forme ${getForma(h)}% • 😮‍💨 Fatigue ${h.fatigue||0}%</div>
+      <div>📈 Évolution : <strong>${evolLabel}</strong> • Déclin : <strong>${declinLabel}</strong></div>
+      <div>🛡️ Résistance : <strong>${resistLabel}</strong></div>
+      ${h.injured?`<div style="color:var(--red)">🤕 Blessé — indisponible ${Math.ceil(h.injuryWeeks)||0} sem.</div>`:''}
+      <div>🏆 ${h.wins}V / ${h.races}C • 💰 €${h.earnings.toLocaleString()}</div>
+      ${h.sire?`<div>📜 ${h.sire} × ${h.dam}</div>`:'<div>📜 Lignée inconnue</div>'}
+      <div>${PISTE_EMOJI[h.prefPiste]||''} Terrain favori : <strong>${h.prefPiste||'—'}</strong>${disc().dai?'':` • Corde : <strong>${h.prefCorde==='—'?'indifférent':(h.prefCorde==='G'?'gauche':'droite')}</strong>`}</div>
+      ${disc().dai?`<div style="color:${surete>70?'var(--green)':'var(--red)'}">⚠️ Sûreté d'allure : ${surete}/100 — ${surete>70?'fiable':'risque de DAI'}</div>`:''}
+    </div>
+    ${renderHorseEntries(h)}
+    <button class="btn-gold" style="margin-top:14px" onclick="openEngageForHorse('${h.id}')">🎯 Engager ${h.name.split(' ')[0]}</button>`;
+  document.getElementById('horse-modal').classList.add('show');
+}
+function renderHorseEntries(h){
+  const ents=horseEntries(h.id).sort((a,b)=> (a.season-b.season)||(a.week-b.week));
+  if (!ents.length) return '<div style="font-size:12px;color:var(--muted);margin-top:12px;text-align:center">Aucun engagement en cours</div>';
+  return `<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:6px">📋 Engagements à venir</div>${ents.map(e=>{
+    const isNow=e.season===G.season&&e.week===G.week;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:${isNow?'rgba(201,168,76,0.18)':'var(--panel)'};border-radius:8px;margin-bottom:4px"><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:11px;color:var(--muted);width:54px">S${e.week}${e.season>G.season?'/A'+e.season:''}</div><div style="flex:1;font-size:12px;font-weight:600">${e.name}<div style="font-size:10px;color:var(--muted);font-weight:400">📍 ${e.venue}${isNow?' • <span style="color:var(--green);font-weight:700">à courir !</span>':''}</div></div><button onclick="event.stopPropagation();cancelEntryFromHorse('${e.courseId}','${h.id}')" style="background:none;border:none;color:var(--red);font-size:10px;text-decoration:underline;cursor:pointer">retirer</button></div>`;
+  }).join('')}</div>`;
+}
+function cancelEntryFromHorse(courseId,horseId){ cancelEntry(courseId); showHorseDetail(horseId); }
+
+// Planning d'engagement pour UN cheval : grandes courses année + génériques 3 semaines
+function openEngageForHorse(horseId){
+  const h=G.horses.find(x=>String(x.id)===String(horseId)); if(!h)return;
+  if (h.injured){ showNotif('🤕 '+h.name.split(' ')[0]+' est blessé, indisponible'); return; }
+  closeModal('horse-modal'); // Fermer la fiche avant d'ouvrir le picker
+  G.engageHorseId=horseId;
+  const items=[];
+  (CALENDAR[G.stable.disc]||[]).filter(c=>c.wk>=G.week).forEach(c=>{
+    const race=featureRaceObj(c);
+    if (isEligible(h,race)) items.push({race,sortKey:c.wk*100});
+  });
+  for (let w=G.week; w<=Math.min(52,G.week+2); w++){
+    racesOfWeek(G.season,w).forEach(r=>{ if(!r.isFeature && isEligible(h,r)) items.push({race:r,sortKey:w*100+r.diff}); });
+  }
+  items.sort((a,b)=>a.sortKey-b.sortKey);
+  document.getElementById('breed-picker-title').textContent='Engager '+h.name.split(' ')[0];
+  document.getElementById('breed-picker-list').innerHTML=
+    `<div style="font-size:11px;color:var(--muted);margin-bottom:10px;text-align:center">${h.emoji} ${h.name} • ${Math.floor(h.age)} ans ${h.sex==='M'?'♂':'♀'} • €${h.earnings.toLocaleString()}<br>Grandes courses de l'année + réunions des 3 prochaines semaines<br><span style="font-size:10px">Un cheval ne court qu'une fois par jour • frais = 1% de la dotation</span></div>`+
+    (items.length===0?'<div class="empty-state">Aucune course éligible à venir</div>':items.map(it=>{
+      const r=it.race; const taken=entryForCourse(r.id); const mine=isEntered(r.id,h.id);
+      const busyDay=!mine && horseBusyThatDay(h.id,r.season,r.week);
+      const fee=engagementFee(r.prize);
+      const gradeColor=r.grade==='G1'?'var(--gold)':r.isFeature?'var(--green)':'var(--muted)';
+      let btn;
+      if (mine) btn='<div style="font-size:10px;color:var(--green);font-weight:700">★ engagé</div>';
+      else if (taken) btn='<div style="font-size:9px;color:var(--muted)">pris (autre)</div>';
+      else if (busyDay) btn='<div style="font-size:9px;color:var(--muted)">déjà ce jour</div>';
+      else btn=`<button onclick="engageHorseInRace('${r.id}','${r.season}',${r.week})" style="background:var(--green);color:white;border:none;border-radius:6px;padding:5px 9px;font-size:10px;font-weight:700;cursor:pointer">+ €${fee.toLocaleString()}</button>`;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:${mine?'rgba(27,94,53,0.1)':busyDay?'#f5f5f5':r.isFeature?'rgba(201,168,76,0.1)':'var(--panel)'};border-radius:8px;margin-bottom:4px;${r.isFeature?'border-left:3px solid var(--gold)':''};opacity:${busyDay?0.6:1}">
+        <div style="font-family:'Playfair Display',serif;font-weight:700;font-size:11px;color:var(--muted);width:34px">S${r.week}</div>
+        <div style="flex:1"><div style="font-size:12px;font-weight:600">${r.name}${r.isFeature?' ⭐':''}</div><div style="font-size:10px;color:var(--muted)">📍 ${r.venue} • <span style="color:${gradeColor};font-weight:700">${r.gradeLabel||r.grade}</span> • €${(r.prize/1000)}k</div></div>
+        <div style="min-width:54px;text-align:right">${btn}</div>
+      </div>`;
+    }).join(''));
+  document.getElementById('breed-picker').classList.add('show');
+}
+function engageHorseInRace(courseId,season,week){
+  const h=G.horses.find(x=>String(x.id)===String(G.engageHorseId)); if(!h)return;
+  // retrouver la course : feature ou générique
+  let race=null;
+  const feat=(CALENDAR[G.stable.disc]||[]).find(c=>featureRaceObj(c).id===courseId);
+  if (feat) race=featureRaceObj(feat);
+  else { race=racesOfWeek(parseInt(season),parseInt(week)).find(r=>r.id===courseId); }
+  if (!race){ showNotif('Course introuvable'); return; }
+  if (enterRace(race,h)) openEngageForHorse(G.engageHorseId);
+}
+
+// ============ MARKET ============
+function horseMarketPrice(h) {
+  // Prix basé sur overall + potentiel + victoires
+  const ov = calcOverall(h);
+  return Math.max(500, Math.round(ov * 120 + h.potential * 80 + (h.wins||0) * 2000 + rnd(-500, 1500)));
+}
+function horseSellPrice(h) {
+  const ov = calcOverall(h);
+  return Math.max(200, Math.round(ov * 90 + (h.wins||0) * 1500 + rnd(-200, 500)));
+}
+function refreshMarketHorses() {
+  G.marketHorses=[];
+  for (let i=0;i<3;i++){
+    const y=generateHorse(rnd(45,70),Math.random()<0.5?'M':'F');
+    y.age=2; y.isYearling=true;
+    y.price=Math.round(y.potential*120+rnd(-500,1500));
+    G.marketHorses.push(y);
+  }
+  for (let i=0;i<3;i++){
+    const h=generateHorse(rnd(50,80));
+    h.price=horseMarketPrice(h);
+    G.marketHorses.push(h);
+  }
+}
+function updateMarket() {
+  if (G.marketHorses.length===0) refreshMarketHorses();
+  const d=disc(); const names=statNames();
+  document.getElementById('market-money').textContent='€'+G.money.toLocaleString();
+  document.getElementById('market-info').innerHTML = `Chevaux <strong>${d.breed}</strong> adaptés au <strong>${d.name}</strong>. Le score étoilé = potentiel.`;
+  document.getElementById('market-list').innerHTML = G.marketHorses.map(h=>{
+    const ov=calcOverall(h); const afford=G.money>=h.price;
+    return `<div class="market-horse-card">
+      <div class="market-horse-row">
+        <div style="font-size:34px">${h.emoji}</div>
+        <div class="market-horse-info">
+          <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700">${h.name} ${h.sex==='M'?'♂':'♀'}</div>
+          <div style="font-size:11px;color:var(--muted)">${Math.floor(h.age)} ans • ${h.coat} ${h.isYearling?'• <span style="color:var(--purple)">Yearling</span>':''}</div>
+          <div style="margin-top:5px">${(()=>{ const dKey=G.stable?G.stable.disc:'plat'; const sd=DISC_STATS[dKey]||DISC_STATS.plat; const colors=['tag-gold','tag-green','tag-blue']; return sd.slice(0,3).map((s,i)=>`<span class="tag ${colors[i]}">${s.label} ${h[s.key]||0}</span>`).join(''); })()}</div>
+        </div>
+        <div><div class="market-horse-price">€${h.price.toLocaleString()}</div><div class="market-horse-potential">OVR ${ov}</div><div class="market-horse-potential"><span class="star-rating">${starRating(h.potential)}</span></div></div>
+      </div>
+      <button class="${afford?'btn-gold':'btn-secondary'}" onclick="buyHorse('${h.id}')" style="margin:0" ${!afford?'disabled':''}>${afford?'🛒 Acheter':'❌ Budget insuffisant'}</button>
+    </div>`;
+  }).join('');
+  document.getElementById('sell-list').innerHTML = G.horses.length===0?`<div style="color:var(--muted);font-size:13px">Rien à vendre.</div>`:G.horses.map(h=>{
+    const sp=horseSellPrice(h);
+    return `<div class="market-horse-card" style="border:1px solid #f0d0d0"><div class="market-horse-row" style="margin-bottom:8px"><div style="font-size:26px">${h.emoji}</div><div class="market-horse-info"><div style="font-weight:700;font-size:14px">${h.name}</div><div style="font-size:11px;color:var(--muted)">${h.wins}V/${h.races}C</div></div><div class="market-horse-price" style="color:var(--red)">+€${sp.toLocaleString()}</div></div><button class="btn-danger" onclick="sellHorse('${h.id}',${sp})">Vendre</button></div>`;
+  }).join('');
+}
+function buyHorse(id){ const h=G.marketHorses.find(x=>String(x.id)===String(id)); if(!h||G.money<h.price){showNotif('❌ Budget insuffisant');return;} G.money-=h.price; G.horses.push(h); G.marketHorses=G.marketHorses.filter(x=>String(x.id)!==String(id)); saveGame(); showNotif(`🐴 ${h.name} acheté !`); updateMarket(); }
+function sellHorse(id,price){ const h=G.horses.find(x=>String(x.id)===String(id)); if(!h)return; G.horses=G.horses.filter(x=>String(x.id)!==String(id)); G.money+=price; saveGame(); showNotif(`💰 ${h.name} vendu €${price.toLocaleString()}`); updateMarket(); }
+function refreshMarket(){ refreshMarketHorses(); updateMarket(); showNotif('🔄 Nouveau catalogue'); }
+
+// ============ TRAINING ============
+// Définition des programmes (ce que le cheval travaille chaque semaine)
+// Chaque programme cible un groupe de stats selon la discipline
+function programDef() {
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const s = DISC_STATS[dKey] || DISC_STATS.plat;
+  // Stats offensives = les 3 premières (stat clé offensive de la discipline)
+  // Stats physiques = endurance + sante + puissance/poids/equilibre
+  const physKeys = ['endurance','sante','puissance','poids','equilibre'];
+  const offKeys  = [s[0].key, s[2]?s[2].key:s[1].key, s[6]?s[6].key:s[0].key];
+  // Filtrer selon ce qui existe dans la discipline courante
+  const allKeys = s.map(x=>x.key);
+  const physStats = allKeys.filter(k=>physKeys.includes(k));
+  const offStats  = allKeys.filter(k=>offKeys.includes(k));
+  // Balanced = toutes les stats
+  const balStats  = allKeys.slice(0, 8); // toutes sauf sante en dernier
+  return {
+    physique:  { id:'physique',  label:'Physique',  icon:'🏋️', desc:'Endurance, santé, puissance', stats: physStats },
+    offensif:  { id:'offensif',  label:'Offensif',  icon:'⚡',  desc:'Vitesse, accélération, départ', stats: offStats },
+    balanced:  { id:'balanced',  label:'Équilibré', icon:'⚖️', desc:'Toutes les stats, gains réduits', stats: balStats },
+  };
+}
+
+// Définition des intensités
+const INTENSITIES = {
+  faible:  { id:'faible',  label:'Faible',  icon:'🌿', fatigueChange:-40, gainMult:0.4,  desc:'-40% fatigue (récup max)' },
+  normal:  { id:'normal',  label:'Normal',  icon:'🏃', fatigueChange:-18, gainMult:0.5,  desc:'-18% fatigue' },
+  intense: { id:'intense', label:'Intense', icon:'🔥', fatigueChange:+10, gainMult:1.8,  desc:'+10% fatigue (charge max)' },
+};
+
+// Stats gagnées par programme + intensité cette semaine (appelé par advanceWeek)
+function applyWeeklyTraining(h) {
+  if (!h.trainProgram || !h.trainIntensity) return; // pas de programme défini
+  if (h.injured) return; // blessé = pas d'entraînement
+  const dKey = G.stable ? G.stable.disc : 'plat';
+  const prog = programDef()[h.trainProgram];
+  const intens = INTENSITIES[h.trainIntensity];
+  if (!prog || !intens) return;
+
+  const ageMult = trainGainMultiplier(h);
+  const assistBonus = G.staff.find(s=>s.id==='assistant') ? 1.15 : 1;
+
+  // Seule la fatigue est gérée par l'entraînement — la forme ne bouge pas ici
+  // Faible : -40 fatigue | Normal : -18 fatigue | Intense : +10 fatigue
+  h.fatigue = clamp((h.fatigue||0) + intens.fatigueChange, 0, 100);
+
+  // Fatigue trop haute et programme intense : pas de gain de stat cette semaine
+  if ((h.fatigue||0) >= 90 && intens.id === 'intense') return;
+
+  // Gains sur les stats du programme
+  const stats = prog.stats;
+  const nbStatsTouched = h.trainProgram === 'balanced' ? 2 : stats.length; // balanced = 2 stats/semaine au lieu de toutes
+  const statsShuffle = stats.slice().sort(()=>Math.random()-0.5).slice(0, nbStatsTouched);
+
+  let totalGain = 0;
+  statsShuffle.forEach(key => {
+    if (h[key] === undefined) return;
+    const cap = h.potential;
+    if (h[key] >= cap) return;
+    // Starters Orders : probabiliste +1 si le dé passe
+    // Plus on approche du plafond, plus c'est rare
+    const gap = cap - h[key];
+    const gapFactor = Math.min(1, gap / 20);
+    const baseProb = intens.id==='faible' ? 0.12 : intens.id==='normal' ? 0.28 : 0.55;
+    const prob = clamp(baseProb * gapFactor * ageMult * assistBonus, 0.02, 0.88);
+    if (Math.random() < prob) {
+      h[key] = Math.min(cap, h[key] + 1);
+      totalGain += 1;
+    }
+  });
+
+  // Compteur trainCount → bonus potentiel
+  if (totalGain > 0) {
+    h.trainCount = (h.trainCount||0) + 1;
+    if (h.trainCount % 8 === 0) {
+      const potCap = (h.potentialBase||h.potential) + 10;
+      if (h.potential < potCap) {
+        h.potential++;
+        showNotif('Potentiel +1 ! ' + h.name.split(' ')[0] + ' -> ' + h.potential);
+      }
+    }
+  }
+}
+
+function updateTraining() {
+  document.getElementById('training-week').textContent='A.'+G.season+' — S.'+G.week;
+  document.getElementById('training-money-badge').textContent='€'+G.money.toLocaleString();
+  document.getElementById('upkeep-cost').textContent='€'+(G.horses.length*250+G.staff.length*400).toLocaleString();
+
+  // Sélecteur cheval
+  const sel=document.getElementById('horse-selector');
+  sel.innerHTML = G.horses.length===0
+    ? '<div style="color:var(--muted);font-size:13px">Aucun cheval</div>'
+    : G.horses.map(h=>{
+        const progLabel = h.trainProgram ? (programDef()[h.trainProgram]?.label||'?') : '—';
+        const intLabel  = h.trainIntensity ? INTENSITIES[h.trainIntensity]?.label : '';
+        const tag = h.injured ? ' 🤕' : '';
+        return `<div class="horse-pill ${G.selectedHorse?.id===h.id?'selected':''}" onclick="selTrainHorse('${h.id}')">${h.emoji} ${h.name.split(' ')[0]}${tag}<div style="font-size:9px;color:var(--muted)">${progLabel}${intLabel?' · '+intLabel:''}</div></div>`;
+      }).join('');
+
+  // Stats cheval sélectionné
+  const stEl=document.getElementById('selected-horse-stats');
+  if (G.selectedHorse) {
+    const h=G.selectedHorse;
+    const dKey2 = G.stable ? G.stable.disc : 'plat';
+    const sDef = DISC_STATS[dKey2]||DISC_STATS.plat;
+    const topBars = sDef.slice(0,5).map(s=>miniBar(s.label, h[s.key]||0, s.color)).join('');
+    const evolLabel2   = (EVOL_TYPES[h.evolType]   ||EVOL_TYPES.normal).label;
+    const declinLabel2 = (DECLIN_TYPES[h.declinType]||DECLIN_TYPES.normal).label;
+    stEl.style.display='block';
+    stEl.innerHTML=`<div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:10px">${h.emoji} ${h.name} — OVR ${calcOverall(h)}</div>${topBars}<div style="font-size:12px;color:var(--muted);margin-top:8px">Forme: <strong style="color:${getForma(h)>60?'var(--green)':getForma(h)>30?'#F5A623':'var(--red)'}">${getForma(h)}%</strong> • Fatigue: <strong style="color:${(h.fatigue||0)<40?'var(--green)':(h.fatigue||0)<70?'#F5A623':'var(--red)'}">${h.fatigue||0}%</strong> • Potentiel: ${h.potential}/${(h.potentialBase||h.potential)+10} • ${evolLabel2}/${declinLabel2}</div>`;
+  } else stEl.style.display='none';
+
+  // Programmes
+  const progs = programDef();
+  const selProg = G.selectedHorse?.trainProgram || G.selectedProg || null;
+  document.getElementById('training-programs').innerHTML = Object.values(progs).map(p=>
+    `<div class="training-opt ${selProg===p.id?'selected':''}" onclick="selProgram('${p.id}')">
+      <div class="training-opt-icon">${p.icon}</div>
+      <div class="training-opt-name">${p.label}</div>
+      <div class="training-opt-bonus">${p.desc}</div>
+    </div>`
+  ).join('');
+
+  // Intensités
+  const selInt = G.selectedHorse?.trainIntensity || G.selectedIntens || null;
+  document.getElementById('training-intensities').innerHTML = Object.values(INTENSITIES).map(it=>
+    `<div class="intensity-opt ${selInt===it.id?'selected':''}" onclick="selIntensity('${it.id}')">
+      <div class="intensity-opt-icon">${it.icon}</div>
+      <div class="intensity-opt-name">${it.label}</div>
+      <div class="intensity-opt-desc">${it.desc}</div>
+    </div>`
+  ).join('');
+
+  // Résumé si programme ET intensité sélectionnés
+  const prog = progs[selProg];
+  const intens = INTENSITIES[selInt];
+  const summary = document.getElementById('program-summary');
+  const btn = document.getElementById('btn-apply-program');
+  if (prog && intens && G.selectedHorse) {
+    const h = G.selectedHorse;
+    const ageMult = trainGainMultiplier(h);
+    const gainBase = intens.id==='faible'?'1-2':intens.id==='normal'?'2-4':'4-7';
+    const gainEff  = intens.id==='faible'?Math.round(1.5*ageMult):intens.id==='normal'?Math.round(3*ageMult):Math.round(5.5*ageMult);
+    summary.style.display='block';
+    summary.innerHTML = `Programme : <strong>${prog.label} ${intens.label}</strong><br>
+Stats travaillées : <strong>${prog.stats.join(', ')}</strong><br>
+Gain estimé/stat : ~<strong>${gainEff} pts</strong>/sem<br>
+Fatigue ${intens.fatigueChange<=0?'<span style="color:var(--green)">'+intens.fatigueChange+'%</span>':'<span style="color:var(--red)">+'+intens.fatigueChange+'%</span>'} par semaine<br>
+Courbe âge : <strong>×${ageMult.toFixed(2)}</strong>${ageMult<0.8?' ⚠️ déclin':ageMult<1.0?' (courbe)':' ✓'}`;
+    btn.disabled = false;
+  } else {
+    summary.style.display='none';
+    btn.disabled = (!prog || !intens || !G.selectedHorse);
+  }
+}
+
+function selTrainHorse(id) {
+  G.selectedHorse = G.horses.find(h=>String(h.id)===String(id));
+  // Précharger le programme actuel du cheval
+  G.selectedProg   = G.selectedHorse?.trainProgram   || null;
+  G.selectedIntens = G.selectedHorse?.trainIntensity || null;
+  updateTraining();
+}
+function selProgram(id) { G.selectedProg = id; updateTraining(); }
+function selIntensity(id) { G.selectedIntens = id; updateTraining(); }
+
+// Appliquer le programme au cheval (définitif jusqu'au prochain changement)
+function applyProgram() {
+  if (!G.selectedHorse) { showNotif('Choisis un cheval'); return; }
+  if (!G.selectedProg)  { showNotif('Choisis un programme'); return; }
+  if (!G.selectedIntens){ showNotif('Choisis une intensite'); return; }
+  const h = G.selectedHorse;
+  h.trainProgram   = G.selectedProg;
+  h.trainIntensity = G.selectedIntens;
+  const prog   = programDef()[G.selectedProg];
+  const intens = INTENSITIES[G.selectedIntens];
+  showNotif(h.name.split(' ')[0] + ' : ' + prog.label + ' ' + intens.label + ' applique');
+  G.selectedProg = null; G.selectedIntens = null;
+  saveGame();
+  updateTraining();
+}
+
+// ============ RACE ============
+// Génère la réunion de la semaine courante : grandes courses du calendrier (cette semaine)
+// + courses génériques de complément. Réparties par niveau pour que le joueur progresse.
+// ============ CONDITIONS D'ENGAGEMENT ============
+// Chaque course a des conditions : âge (min/max), sexe ('T'=tous,'F'=femelles,'M'=mâles+hongres),
+// gains (maxEarn = plafond de gains pour entrer, minOvr = niveau requis implicite via grade).
+// Les grandes courses (G1) sont réservées à l'élite : âge précis + gros niveau.
+function conditionsForFeature(c){
+  // Déduit des conditions réalistes selon le nom de la course
+  const n=c.name.toLowerCase();
+  let cond={ ageMin:3, ageMax:12, sex:'T', maxEarn:null, label:'' };
+  // Courses de jeunes (critériums, poules, classiques d'âge)
+  if (n.includes('poulains')) { cond={ageMin:3,ageMax:3,sex:'M',maxEarn:null,label:'3 ans mâles'}; }
+  else if (n.includes('pouliches')) { cond={ageMin:3,ageMax:3,sex:'F',maxEarn:null,label:'3 ans femelles'}; }
+  else if (n.includes('diane')) { cond={ageMin:3,ageMax:3,sex:'F',maxEarn:null,label:'3 ans femelles'}; }
+  else if (n.includes('jockey club')) { cond={ageMin:3,ageMax:3,sex:'T',maxEarn:null,label:'3 ans'}; }
+  else if (n.includes('critérium des 3') ) { cond={ageMin:3,ageMax:3,sex:'T',maxEarn:null,label:'3 ans'}; }
+  else if (n.includes('critérium des 4')||n.includes('4 ans')) { cond={ageMin:4,ageMax:4,sex:'T',maxEarn:null,label:'4 ans'}; }
+  else if (n.includes('critérium des 5')||n.includes('5 ans')) { cond={ageMin:5,ageMax:5,sex:'T',maxEarn:null,label:'5 ans'}; }
+  else if (n.includes('grand prix de paris')||n.includes('grand prix de saint')) { cond={ageMin:3,ageMax:5,sex:'T',maxEarn:null,label:'3-5 ans'}; }
+  else if (n.includes('morny')) { cond={ageMin:2,ageMax:2,sex:'T',maxEarn:null,label:'2 ans'}; }
+  else if (c.grade==='G1') { cond={ageMin:4,ageMax:11,sex:'T',maxEarn:null,label:'Élite'}; }
+  else if (c.grade==='G2') { cond={ageMin:3,ageMax:11,sex:'T',maxEarn:null,label:'Black-type'}; }
+  else { cond={ageMin:3,ageMax:12,sex:'T',maxEarn:null,label:''}; }
+  return cond;
+}
+// Conditions pour courses génériques selon le niveau (échelle de gains = vraie hiérarchie FR)
+function conditionsForGeneric(level){
+  // level: 0 débutant -> 4 élite
+  const tiers=[
+    {maxEarn:8000,label:'Débutants',ageMin:3,ageMax:8,sex:'T'},
+    {maxEarn:20000,label:'Course D',ageMin:3,ageMax:10,sex:'T'},
+    {maxEarn:45000,label:'Course C',ageMin:3,ageMax:11,sex:'T'},
+    {maxEarn:90000,label:'Course B',ageMin:3,ageMax:12,sex:'T'},
+    {maxEarn:null,label:'Course A',ageMin:3,ageMax:12,sex:'T'},
+  ];
+  return tiers[level]||tiers[0];
+}
+function sexEligible(h,condSex){
+  if (condSex==='T') return true;
+  if (condSex==='F') return h.sex==='F';
+  if (condSex==='M') return h.sex==='M';
+  return true;
+}
+function isEligible(h,race){
+  const c=race.cond; const age=Math.floor(h.age);
+  if (age<c.ageMin||age>c.ageMax) return false;
+  if (!sexEligible(h,c.sex)) return false;
+  if (c.maxEarn!=null && h.earnings>c.maxEarn) return false;
+  return true;
+}
+function eligibilityReason(h,race){
+  const c=race.cond; const age=Math.floor(h.age); const r=[];
+  if (age<c.ageMin) r.push(`trop jeune (${age}<${c.ageMin})`);
+  if (age>c.ageMax) r.push(`trop âgé (${age}>${c.ageMax})`);
+  if (!sexEligible(h,c.sex)) r.push(c.sex==='F'?'réservé femelles':'réservé mâles');
+  if (c.maxEarn!=null && h.earnings>c.maxEarn) r.push(`gains trop élevés (>${(c.maxEarn/1000)}k)`);
+  return r.join(', ');
+}
+
+// ============ MOTEUR DE RÉUNIONS (déterministe) ============
+// PRNG seedé : mêmes réunions à chaque visite pour une (saison,semaine,discipline) donnée.
+function seededRand(seed){ let s=seed%2147483647; if(s<=0)s+=2147483646; return ()=>{ s=(s*16807)%2147483647; return (s-1)/2147483646; }; }
+function strSeed(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))|0; } return Math.abs(h)+1; }
+function srInt(rng,min,max){ return Math.floor(rng()*(max-min+1))+min; }
+
+// Construit les réunions d'une semaine donnée (déterministe)
+function buildMeetingsFor(season,week,discKey){
+  const d=DISCIPLINES[discKey];
+  const MIN_MEETINGS=3, MIN_RACES=6;
+  const rng=seededRand(strSeed(discKey+'-S'+season+'-W'+week));
+  const cal=(CALENDAR[discKey]||[]).filter(c=>c.wk===week);
+  const venuesSet=[];
+  cal.forEach(c=>{ if(!venuesSet.includes(c.venue)) venuesSet.push(c.venue); });
+
+  // Règle premium : jamais 2 hippodromes premium la même semaine (sauf Vincennes trot)
+  const tiers = d.venueTier || {};
+  const hasPremiumAlready = venuesSet.some(v=>tiers[v]==='premium');
+  const pool = d.venues.slice().filter(v=>!venuesSet.includes(v));
+  // Mélanger le pool (déterministe)
+  for(let i=pool.length-1;i>0;i--){const j=srInt(rng,0,i);[pool[i],pool[j]]=[pool[j],pool[i]];}
+
+  while (venuesSet.length<MIN_MEETINGS && pool.length){
+    const v=pool.shift();
+    // Si déjà un premium cette semaine, skip les autres premium (sauf Vincennes)
+    if (tiers[v]==='premium' && hasPremiumAlready && v!=='Vincennes') continue;
+    venuesSet.push(v);
+  }
+  // S'assurer qu'on a au moins MIN_MEETINGS
+  if (venuesSet.length < MIN_MEETINGS) {
+    const remaining = d.venues.filter(v=>!venuesSet.includes(v));
+    for(const v of remaining){ if(venuesSet.length>=MIN_MEETINGS) break; venuesSet.push(v); }
+  }
+  const meetings=venuesSet.map((venue,vi)=>{
+    const featHere=cal.filter(c=>c.venue===venue).map(c=>({
+      id:'F-'+discKey+'-S'+season+'-'+c.name.replace(/\s+/g,''),
+      name:c.name, grade:c.grade, gradeLabel:GRADE_LABEL[c.grade], venue, distance:c.dist,
+      diff:GRADE_DIFF[c.grade], prize:c.prize, scale:[1,0.4,0.2,0.08], isFeature:true,
+      cond:conditionsForFeature(c), season, week,
+    }));
+    const races=featHere.slice();
+    const used={}; featHere.forEach(f=>used[f.name]=1);
+    let lvl=0;
+    while (races.length<MIN_RACES){
+      const level=lvl%5; lvl++;
+      const cnd=conditionsForGeneric(level);
+      const g = level>=4?'G3':level>=3?'L':'P';
+      const prizeBands={P:[6000,16000],L:[24000,40000],G3:[45000,70000]};
+      const pr=prizeBands[g];
+      const dist=d.distances[srInt(rng,0,d.distances.length-1)];
+      const nm=genericRaceName(venue,used,cnd);
+      races.push({
+        id:'G-'+discKey+'-S'+season+'-W'+week+'-'+venue.replace(/\s+/g,'')+'-'+nm.replace(/\s+/g,''),
+        name:nm, grade:g, gradeLabel:cnd.label||GRADE_LABEL[g], venue,
+        distance:dist, diff:GRADE_DIFF[g], prize:srInt(rng,pr[0],pr[1]), scale:[1,0.4,0.2,0.08],
+        isFeature:false, cond:cnd, season, week,
+      });
+    }
+    races.sort((a,b)=> (b.isFeature-a.isFeature) || (b.diff-a.diff) || (a.prize-b.prize));
+    return { venue, vdata:venueData(venue), races, hasFeature:featHere.length>0 };
+  });
+  meetings.sort((a,b)=> (b.hasFeature-a.hasFeature));
+  return meetings;
+}
+function buildMeetings(){ return buildMeetingsFor(G.season,G.week,G.stable.disc); }
+
+// Toutes les courses d'une semaine (à plat, pour recherche d'éligibilité)
+function racesOfWeek(season,week){ const out=[]; buildMeetingsFor(season,week,G.stable.disc).forEach(mt=>mt.races.forEach(r=>out.push(r))); return out; }
+
+// ============ NOMS DE COURSES PAR HIPPODROME ============
+const RACE_CATALOG = {
+  'ParisLongchamp': {
+    debutant: ['Prix du Bois de Boulogne','Prix Octave Douesnel','Prix de la Muette','Prix du Rond-Point','Prix de la Grande Cascade','Prix de la Porte Dauphine'],
+    d:        ['Prix Edmond Blanc','Prix de Ris-Orangis','Prix de la Foret Bleue','Prix Eugene Adam','Prix du Pavillon Royal','Prix de la Grille Royale'],
+    c:        ['Prix du Cadran Automnal','Prix de la Seine','Prix Florilege','Prix de la Pepiniere','Prix Charles Laffitte','Prix de Bagatelle'],
+    b:        ['Prix du Conseil de Paris','Prix de la Tour','Prix de Flore','Prix de la Vallee de la Seine','Prix Thomas Byron','Prix de Courcelles'],
+    a:        ['Prix du President Wilson','Prix La Rochette','Prix Hedouville','Prix de Reux','Prix de Fontainebleau','Prix de Lutece'],
+  },
+  'Chantilly': {
+    debutant: ['Prix des Poulinieres','Prix du Chateau','Prix des Aigles','Prix du Jeu de Paume','Prix des Ecuries Royales','Prix de la Pelouse'],
+    d:        ['Prix des Condéens','Prix du Connetable','Prix des Ecuyers','Prix de Coye','Prix de Lamorlaye','Prix des Veneurs'],
+    c:        ['Prix de Senlis','Prix du Domaine','Prix de la Foret','Prix du Grand Veneur','Prix Saint-Firmin','Prix des Quatre Saisons'],
+    b:        ['Prix du Lys','Prix de Gouvieux','Prix de la Clairiere','Prix du Val Oise','Prix Daphnis','Prix du Bouquet Royal'],
+    a:        ['Prix Matchem','Prix du Bois des Princes','Prix de la Vallee Auge','Prix Nontron','Prix Imprudence','Prix de Liancourt'],
+  },
+  'Deauville': {
+    debutant: ['Prix des Sablettes','Prix de la Cote Fleurie','Prix des Planches','Prix de Trouville','Prix de la Digue','Prix des Regates'],
+    d:        ['Prix de Villers','Prix du Touques','Prix de Clarbec','Prix de la Touques','Prix des Coquettes','Prix de Benerville'],
+    c:        ['Prix de la Villa Strassburger','Prix de Pennedepie','Prix du Calvados','Prix de Cabourg','Prix du Pays Auge','Prix de la Cote Normande'],
+    b:        ['Prix de la Nonette','Prix Ambroise Thomas','Prix du Haras de Fresnay','Prix de Pont Eveque','Prix de la Pomme','Prix des Elegances'],
+    a:        ['Prix de Pomone','Prix Bertrand du Breuil','Prix de la Comete','Prix Allez France','Prix de Mautry','Prix de la Touques'],
+  },
+  'Saint-Cloud': {
+    debutant: ['Prix des Jonquilles','Prix du Lac','Prix des Acacias','Prix de Rueil','Prix des Pruniers','Prix du Parc'],
+    d:        ['Prix de Maisons','Prix du Val de Seine','Prix de Sevres','Prix de Puteaux','Prix de Versailles','Prix du Coteau'],
+    c:        ['Prix de la Grotte','Prix de la Terrasse','Prix Gontaut-Biron','Prix du Vallon','Prix de Suresnes','Prix de Bougival'],
+    b:        ['Prix du Muguet','Prix de la Chapelle','Prix de Marly','Prix Sigy','Prix de la Butte','Prix des Liserons'],
+    a:        ['Prix de Guiche','Prix la Force','Prix Isola Bella','Prix de Sandringham','Prix de Barbeville','Prix de la Porte Maillot'],
+  },
+  'Maisons-Laffitte': {
+    debutant: ['Prix des Ecureuils','Prix du Bac','Prix de la Vieille Ferme','Prix des Sablons','Prix des Lilas','Prix du Tertre'],
+    d:        ['Prix de Saint-Germain','Prix des Tilleuls','Prix du Pecq','Prix de Conflans','Prix des Bruyeres','Prix de Chatou'],
+    c:        ['Prix de Tarascon','Prix du Parc','Prix des Charmes','Prix de Neuilly','Prix du Val-de-Marne','Prix de Chatillon'],
+    b:        ['Prix du Palais Royal','Prix Aligre','Prix Yacowlef','Prix Xaintrailles','Prix de la Riviere','Prix du Tertre Royal'],
+    a:        ['Prix Exbury','Prix La Moskowa','Prix de Villebon','Prix de la Ceinture','Prix du Rocher','Prix des Aigles Royaux'],
+  },
+  'Auteuil': {
+    debutant: ['Prix des Haies du Bois','Prix du Premier Obstacle','Prix des Espoirs','Prix du Champ de Courses','Prix de Boulogne','Prix des Poulains'],
+    d:        ['Prix Finot','Prix des Roses','Prix de Clichy','Prix des Haies','Prix Eaubonne','Prix des Hauts de Seine'],
+    c:        ['Prix de Longchamp-Haies','Prix du Val Or','Prix de Meudon','Prix de la Marche','Prix du Marais','Prix des Lilas'],
+    b:        ['Prix Ingre','Prix du Manoir','Prix Heros du Manoir','Prix de Belmont','Prix des Drags','Prix de la Sente'],
+    a:        ['Prix Turgeon','Prix Kilmore','Prix des Ajoncs','Prix des Cigognes','Prix des Landes','Prix du Grand Obstacle'],
+  },
+  'Vincennes': {
+    debutant: ['Prix de la Vallee de la Marne','Prix du Chateau de Vincennes','Prix des Fosses','Prix de Nogent','Prix de Fontenay','Prix du Donjon'],
+    d:        ['Prix de Saint-Maur','Prix du Lac Daumesnil','Prix de Charenton','Prix de Joinville','Prix de Maisons-Alfort','Prix du Bois'],
+    c:        ['Prix des Lilas Automne','Prix de Creteil','Prix du Perreux','Prix de Champigny','Prix de Saint-Mande','Prix des Vignes'],
+    b:        ['Prix Gaston Regnard','Prix de la Marne','Prix du Val-de-Marne Trot','Prix de la Plaine','Prix des Capitales','Prix des Marechaux'],
+    a:        ['Prix Tenor des Sables','Prix de la Toison Or','Prix du Marechal Foch','Prix des Cygnes','Prix de la Vanne','Prix des Joyaux'],
+  },
+  'Enghien-Soisy': {
+    debutant: ['Prix de Etang','Prix de Soisy','Prix des Roseaux','Prix du Moulin','Prix de la Clef','Prix des Rives'],
+    d:        ['Prix de Montmorency','Prix du Val-Oise Trot','Prix de Taverny','Prix de Pontoise','Prix de Saint-Leu','Prix de Domont'],
+    c:        ['Prix de la Plaine Montmorency','Prix des Boucles Oise','Prix de Cergy','Prix Ecouen','Prix des Coteaux','Prix du Plateau'],
+    b:        ['Prix Elysee','Prix du Lac des Minimes','Prix de la Boucle','Prix de Beaumont','Prix des Allees','Prix des Eaux Vives'],
+    a:        ['Prix des Ambassadeurs','Prix du Val Royal','Prix des Seigneurs','Prix du Chateau Ecouen','Prix des Forges','Prix des Canaux'],
+  },
+  'Caen': {
+    debutant: ['Prix des Pommiers','Prix de Abbaye','Prix des Normands','Prix Guillaume-le-Conquerant','Prix des Calvadosiens','Prix du Bessin'],
+    d:        ['Prix de Orne','Prix de Carpiquet','Prix de Bayeux','Prix de Lisieux','Prix de la Presquile','Prix des Bocages'],
+    c:        ['Prix du Bocage Normand','Prix Napoleon III','Prix Herouville','Prix de la Cote de Nacre','Prix de Benouville','Prix des Collines'],
+    b:        ['Prix des Vikings','Prix du Chateau de Caen','Prix Ouistreham','Prix du Debarquement','Prix des Vainqueurs','Prix de la Falaise'],
+    a:        ['Prix du Roi de Rome','Prix des Cretes','Prix William Marshal','Prix du Cotentin','Prix des Lions Normandie','Prix de la Liberte'],
+  },
+  'Lyon-Parilly': {
+    debutant: ['Prix des Brotteaux','Prix de la Croix-Rousse','Prix des Gones','Prix de la Presquile','Prix de Gerland','Prix des Traboules'],
+    d:        ['Prix du Rhone','Prix de la Saone','Prix de Villeurbanne','Prix de Venissieux','Prix de Decines','Prix des Monts Or'],
+    c:        ['Prix de la Place Bellecour','Prix des Lumieres','Prix de Perrache','Prix des Lyonnais','Prix de la Confluence','Prix de Fourviere'],
+    b:        ['Prix du Parc de Parilly','Prix des Alpes','Prix de la Bresse','Prix de la Dombes','Prix du Beaujolais','Prix de Ain'],
+    a:        ['Prix du Mistral Rhodanien','Prix des Gaules','Prix de la Ville de Lyon','Prix des Canuts','Prix du Grand Palais','Prix du Viaduc'],
+  },
+  'Toulouse': {
+    debutant: ['Prix des Violettes','Prix de la Garonne','Prix des Capitouls','Prix du Canal du Midi','Prix de la Cote Pavee','Prix du Parlement'],
+    d:        ['Prix de Ariege','Prix du Tarn','Prix de Saint-Gaudens','Prix des Pyrenees Centrales','Prix de Colomiers','Prix du Lauragais'],
+    c:        ['Prix de Muret','Prix de Blagnac','Prix Albi','Prix du Grand Rond','Prix de Castres','Prix des Pastel'],
+    b:        ['Prix du Stade Toulousain','Prix de la Ville Rose','Prix des Haut-Garonne','Prix du Comminges','Prix des Bords Garonne','Prix des Capitoles'],
+    a:        ['Prix du Parlement Toulousain','Prix des Comtes de Toulouse','Prix Eauze','Prix du Capitole','Prix des Quatre-Vents','Prix des Croisades'],
+  },
+  'Marseille-Borélý': {
+    debutant: ['Prix de la Canebiere','Prix des Catalans','Prix du Vieux-Port','Prix de la Corniche','Prix de la Bonne Mere','Prix des Phocéens'],
+    d:        ['Prix de la Mediterranee','Prix des Calanques','Prix du Parc Borély','Prix de Cassis','Prix de la Cote Bleue','Prix des Bouches'],
+    c:        ['Prix de Aubagne','Prix de Etang de Berre','Prix de la Camargue','Prix Aix-en-Provence','Prix de Martigues','Prix des Alpilles'],
+    b:        ['Prix du Mistral','Prix de la Cite Phoceenne','Prix des Iles du Frioul','Prix de Sainte-Victoire','Prix de la Crau','Prix des Gladiateurs'],
+    a:        ['Prix du Roi Rene','Prix des Felibres','Prix de Amphitheatre','Prix de la Mer Nostrum','Prix des Grandes Voiles','Prix des Empereurs'],
+  },
+  'Marseille-Borély': {
+    debutant: ['Prix de la Canebiere','Prix des Catalans','Prix du Vieux-Port','Prix de la Corniche','Prix de la Bonne Mere','Prix des Phoceens'],
+    d:        ['Prix de la Mediterranee','Prix des Calanques','Prix du Parc Borely','Prix de Cassis','Prix de la Cote Bleue','Prix des Bouches'],
+    c:        ['Prix de Aubagne','Prix de Etang de Berre','Prix de la Camargue','Prix Aix-en-Provence','Prix de Martigues','Prix des Alpilles'],
+    b:        ['Prix du Mistral','Prix de la Cite Phoceenne','Prix des Iles du Frioul','Prix de Sainte-Victoire','Prix de la Crau','Prix des Gladiateurs'],
+    a:        ['Prix du Roi Rene','Prix des Felibres','Prix de Amphitheatre','Prix de la Mer Nostrum','Prix des Grandes Voiles','Prix des Empereurs'],
+  },
+  'Cagnes-sur-Mer': {
+    debutant: ['Prix de la Promenade','Prix du Soleil Hiver','Prix des Mimosas','Prix de Esterel','Prix du Carnaval','Prix des Palmiers'],
+    d:        ['Prix des Alpes-Maritimes','Prix de la Baie des Anges','Prix de Vence','Prix Antibes','Prix de Cannes','Prix de Grasse'],
+    c:        ['Prix de la Cote Azur','Prix de Monaco','Prix de Nice','Prix de Menton','Prix du Cap-Ferrat','Prix de Saint-Jean'],
+    b:        ['Prix des Roses de Nice','Prix du Palais des Rois','Prix de la Riviera','Prix des Mimosades','Prix de Beaulieu','Prix des Princes'],
+    a:        ['Prix du Grand Casino','Prix de la Villa Kerylos','Prix des Alpes du Sud','Prix du Var','Prix de la Turbie','Prix des Grands Ducs'],
+  },
+  'Pau': {
+    debutant: ['Prix des Pyrenees','Prix du Gave de Pau','Prix des Bearnes','Prix de la Place Royale','Prix du Chateau de Pau','Prix des Gaves'],
+    d:        ['Prix des Eaux-Bonnes','Prix du Gave Oloron','Prix de Lourdes','Prix de Tarbes','Prix du Piemont','Prix de Nay'],
+    c:        ['Prix de Bayonne-Obstacle','Prix du Pays Basque','Prix des Basques','Prix Orthez','Prix du Gave Pau','Prix de Sauveterre'],
+    b:        ['Prix Henri IV','Prix de la Foret de Rouet','Prix des Gaves Reunis','Prix de la Ville de Pau','Prix des Basses-Pyrenees','Prix Bearnais'],
+    a:        ['Prix du Roi de Navarre','Prix des Coteaux Vic-Bilh','Prix du Gave Royal','Prix des Pics du Midi','Prix de Ossau','Prix du Cirque Gavarnie'],
+  },
+  'Compiegne': {
+    debutant: ['Prix de Compiegne','Prix des Veneurs de Compiegne','Prix des Poulains de Picardie','Prix du Chateau de Pierrefonds','Prix de la Foret de Compiegne','Prix de Senlis'],
+    d:        ['Prix du Valois','Prix de Soissons','Prix du Plateau de Chazelles','Prix de la Clairiere de Compiegne','Prix du Moulin de Compiegne','Prix de Verberie'],
+    c:        ['Prix de Laon','Prix du Bois de Bove','Prix des Hauts de Compiegne','Prix du Parc de Compiegne','Prix de la Plaine de Compiegne','Prix de Nanteuil'],
+    b:        ['Prix du Haras de Compiegne','Prix du Valois Royal','Prix de Margny','Prix de la Croix Saint-Ouen','Prix de Coudun','Prix de la Vallee de Oise'],
+    a:        ['Prix du Connétable de Bourbon','Prix Chlodion','Prix des Grandes Ecuries','Prix du Dragon','Prix de la Pelouse Royale','Prix des Preux'],
+  },
+  'Vichy': {
+    debutant: ['Prix des Sources','Prix de la Rotonde','Prix du Celestins','Prix des Thermes','Prix de Vichy-la-Belle','Prix du Parc des Sources'],
+    d:        ['Prix de Cusset','Prix de Bellerive','Prix de la Montagne Bourbonnaise','Prix du Moulin Gaillard','Prix de Abrest','Prix des Rives Allier'],
+    c:        ['Prix de Clermont-Ferrand','Prix de la Chaine des Puys','Prix des Volcans','Prix de Moulins','Prix de Thiers','Prix du Bourbonnais'],
+    b:        ['Prix des Villes Eau','Prix du Grand Hotel','Prix du Casino de Vichy','Prix du Chatelet','Prix des Ambassadeurs de Vichy','Prix de la Noblesse'],
+    a:        ['Prix Louis Romanet','Prix du Grand Etablissement','Prix des Grands Hotels','Prix de la Marquise','Prix du Roi de Nevers','Prix de la Source Celestins'],
+  },
+  'Bordeaux': {
+    debutant: ['Prix des Chartrons','Prix du Medoc','Prix de Merignac','Prix des Quais de Bordeaux','Prix du Pont de Pierre','Prix de la Garonne'],
+    d:        ['Prix de Pessac','Prix du Lac de Bordeaux','Prix des Crus Classes','Prix de Talence','Prix de Lormont','Prix du Bouscat'],
+    c:        ['Prix des Graves','Prix de Entre-Deux-Mers','Prix du Sauternais','Prix de Blanquefort','Prix du Libournais','Prix de Fronsac'],
+    b:        ['Prix du Grand Theatre','Prix de la Place des Quinconces','Prix du Chateau Margaux','Prix des Negociants','Prix du Pauillac','Prix du Saint-Emilion'],
+    a:        ['Prix du Parlement de Guyenne','Prix Eleanor d Aquitaine','Prix des Girondins','Prix du Roi Dagobert','Prix de la Duchesse','Prix des Grands Crus'],
+  },
+  'Strasbourg': {
+    debutant: ['Prix de la Petite France','Prix des Bateliers','Prix du Rhin','Prix du Marche de Noel','Prix du Barrage Vauban','Prix des Cigognes'],
+    d:        ['Prix de Schiltigheim','Prix de Illkirch','Prix des Vosges','Prix d Oberheim','Prix du Kochersberg','Prix de Lingolsheim'],
+    c:        ['Prix du Palais Rohan','Prix de la Cathedrale','Prix des Alsaciens','Prix du Parc de l Orangerie','Prix du Canal du Rhin','Prix de Colmar'],
+    b:        ['Prix de la Neustadt','Prix du Reichstag','Prix des Vignobles Alsaciens','Prix du Munster','Prix de Ribeauville','Prix du Riquewihr'],
+    a:        ['Prix de l Ill','Prix des Empereurs Germaniques','Prix du Gutenberg','Prix de la Route des Vins','Prix des Hohenstaufen','Prix du Rhin Superieur'],
+  },
+  'Fontainebleau': {
+    debutant: ['Prix de la Foret des Rois','Prix du Rocher','Prix du Bois du Grand Maitre','Prix des Gorges','Prix de Fontainebleau-Ville','Prix du Serrement de Main'],
+    d:        ['Prix de Barbizon','Prix de Moret','Prix de Melun','Prix du Chateau de Fontainebleau','Prix de la Galerie Francois I','Prix des Chasseurs'],
+    c:        ['Prix des Ecoles de Fontainebleau','Prix du Chene Prieur','Prix de la Mare aux Evees','Prix des Sablons de Nemours','Prix de la Croix du Grand Maitre','Prix du Parterre'],
+    b:        ['Prix du Fer a Cheval','Prix de Vaux-le-Vicomte','Prix des Bouleaux','Prix de la Solle','Prix du Long Rocher','Prix du Tresor de Fontainebleau'],
+    a:        ['Prix du Roi Soleil','Prix de la Cour des Adieux','Prix du Grand Canal','Prix Francois I','Prix de la Salamandre','Prix de la Foret Imperiale'],
+  },
+  'Nantes': {
+    debutant: ['Prix de la Loire','Prix du Muscadet','Prix de Rezé','Prix des Nantais','Prix du Marais Breton','Prix des Bords de Loire'],
+    d:        ['Prix de Ancenis','Prix de Saint-Nazaire','Prix du Pays de Retz','Prix des Pays de la Loire','Prix de la Vendee','Prix du Vignoble Nantais'],
+    c:        ['Prix des Ducs de Bretagne','Prix du Chateau des Ducs','Prix du Poivre Nantais','Prix de la Biscuiterie','Prix du Port de Nantes','Prix de la Briere'],
+    b:        ['Prix de la Tour Lu','Prix du Passage Pommeraye','Prix des Machines de l Ile','Prix du Lac de Grand-Lieu','Prix de la Sevre Nantaise','Prix des Nefs'],
+    a:        ['Prix des Ducs de Nantes','Prix de la Duchesse Anne','Prix du Roi Francois II','Prix de la Cour des Comptes','Prix des Cinquante Otages','Prix du Grand Large'],
+  },
+  'Clairefontaine': {
+    debutant: ['Prix des Pommiers Normands','Prix de la Baie de Deauville','Prix de Lisieux','Prix de la Cote Fleurie','Prix des Haras de Normandie','Prix du Pays d Auge'],
+    d:        ['Prix de Honfleur','Prix de Pont-Leveque','Prix de Orbec','Prix du Livarot','Prix de la Vallee d Auge','Prix du Camembert'],
+    c:        ['Prix de Bernay','Prix de Evreux','Prix des Plages Normandes','Prix de la Seine-Maritime','Prix de Brionne','Prix du Marais Vernier'],
+    b:        ['Prix de Broglie','Prix du Haras du Pin','Prix des Normands de Coeur','Prix de la Risle','Prix du Bec Hellouin','Prix de Cormeilles'],
+    a:        ['Prix du Duc de Normandie','Prix de Guillaume Conquerant','Prix des Terres Normandes','Prix de la Tapisserie de Bayeux','Prix du Haras de la Haie Neuve','Prix de la Cote Normande'],
+  },
+  'Argentan-Plat': {
+    debutant: ['Prix des Haras d Argentan','Prix du Haras du Pin','Prix de la Plaine','Prix des Poulains Normands','Prix d Orne','Prix de Flers'],
+    d:        ['Prix de Sees','Prix d Alencon','Prix de la Campagne d Argentan','Prix des Orne','Prix du Bocage Normand','Prix de Ecouche'],
+    c:        ['Prix de Vimoutiers','Prix de la Foret d Ecouves','Prix de Mortagne','Prix de Gace','Prix des Haras de Normandie','Prix du Perche'],
+    b:        ['Prix du Haras de Roullee','Prix de la Trappe','Prix du Perche Normand','Prix de la Ferme Mancel','Prix des Genets','Prix d Argentan'],
+    a:        ['Prix du Stud-Book Normand','Prix des Sires d Argentan','Prix de la Race Normande','Prix des Eleveurs Ornais','Prix du Pays d Orne','Prix des Champions Normands'],
+  },
+  'Pornichet-La Baule': {
+    debutant: ['Prix de la Plage de La Baule','Prix des Pins','Prix du Bord de Mer','Prix de la Grande Plage','Prix des Vagues','Prix du Front de Mer'],
+    d:        ['Prix de la Presquile','Prix de Guerande','Prix des Marais Salants','Prix de la Côte Sauvage','Prix de Saint-Nazaire','Prix de Le Pouliguen'],
+    c:        ['Prix du Lac de Grand-Lieu','Prix du Pays Blanc','Prix des Salins','Prix de Piriac','Prix des Traicts du Croisic','Prix des Moriciers'],
+    b:        ['Prix de l Esplanade','Prix des Vacanciers','Prix des Sables d Olonne','Prix du Golfe du Morbihan','Prix de la Corniche','Prix du Casino de La Baule'],
+    a:        ['Prix des Grandes Dunes','Prix du Roi du Sel','Prix de la Reine des Plages','Prix des Iles Bretonnes','Prix du Palais des Congres','Prix du Grand Littoral'],
+  },
+  'Rouen-Trot': {
+    debutant: ['Prix de la Seine-Maritime','Prix du Port de Rouen','Prix des Normands','Prix de la Cathedrale de Rouen','Prix du Palais de Justice','Prix des Bords de Seine'],
+    d:        ['Prix de Sotteville','Prix d Elbeuf','Prix du Pays de Caux','Prix de Barentin','Prix de Oissel','Prix des Verts Cotis'],
+    c:        ['Prix du Gros Horloge','Prix des Fiers Normands','Prix de la Capitale Normande','Prix du Chemin de Fer','Prix de Cleres','Prix du Moulin d Eckmu'],
+    b:        ['Prix des Vikings de Rouen','Prix du Donjon de Rouen','Prix de la Couronne','Prix des Armateurs','Prix du Haras de Saint-Pair','Prix de Caumont'],
+    a:        ['Prix de Rollon','Prix des Ducs de Normandie Trot','Prix du Grand Pont de Rouen','Prix de la Cour des Comptes Trot','Prix des Champions Normands Trot','Prix de la Seine Royale'],
+  },
+  'Amiens': {
+    debutant: ['Prix de la Somme','Prix des Hortillonnages','Prix de la Baie de Somme','Prix des Picards','Prix du Marais de la Somme','Prix d Amiens'],
+    d:        ['Prix de Peronne','Prix de Saint-Quentin','Prix du Laon','Prix des Flandres Picardes','Prix de Abbeville','Prix de la Vallee de Somme'],
+    c:        ['Prix du Beffroi','Prix de la Cathedrale Notre-Dame','Prix des Champs de Bataille','Prix du Chemin des Dames','Prix de Doullens','Prix des Moissonneurs'],
+    b:        ['Prix des Poilus','Prix du Souvenir Picard','Prix du Memorial de Thiepval','Prix des Gens du Nord','Prix de la Citadelle','Prix des Veterans'],
+    a:        ['Prix du Duc d Amienz','Prix des Picardie Champions','Prix du Port d Amiens','Prix de la Somme Royale','Prix des Grandes Batailles','Prix du Nord de France'],
+  },
+  'Marseille-Vivaux': {
+    debutant: ['Prix des Calanques Trot','Prix du Vieux-Port Trot','Prix de la Canebiere Trot','Prix des Catalans Trot','Prix du Frioul Trot','Prix des Phocéens Trot'],
+    d:        ['Prix de la Ciotat','Prix de Aubagne Trot','Prix de Martigues Trot','Prix des Bouches du Rhone Trot','Prix de Aix Trot','Prix de Gardanne'],
+    c:        ['Prix du Mistral Trot','Prix de la Mer Bleue','Prix des Marseillais Trot','Prix de la Ville Phocéenne','Prix des Iles Trot','Prix de la Provence Trot'],
+    b:        ['Prix du Roi Rene Trot','Prix de la Bonne Mere Trot','Prix des Felibres Trot','Prix de Notre-Dame de la Garde','Prix des Grands Ducs Trot','Prix du Panier'],
+    a:        ['Prix des Champions Provencaux','Prix de la Cite Phoceenne Trot','Prix des Empereurs Trot','Prix de Sainte-Victoire Trot','Prix du Roi des Criques','Prix des Gladiateurs Trot'],
+  },
+  'Le Croisé-Laroche': {
+    debutant: ['Prix du Nord Trot','Prix de Lille Trot','Prix des Chtis','Prix des Hauts de France Trot','Prix de Roubaix Trot','Prix de Tourcoing Trot'],
+    d:        ['Prix de Valenciennes Trot','Prix de Douai Trot','Prix du Bassin Minier Trot','Prix de Bethune Trot','Prix de Lens Trot','Prix d Arras Trot'],
+    c:        ['Prix du Beffroi de Lille','Prix des Flandres Trot','Prix de la Menapie','Prix du Stade de France Nord','Prix des Lainiers','Prix du Textile'],
+    b:        ['Prix du Grand Palais de Lille','Prix des Tisserands','Prix des Capitaines du Nord','Prix de la Rue de Bethune','Prix du Vieux-Lille','Prix des Brasseurs'],
+    a:        ['Prix des Champions du Nord','Prix du Roi des Flandres','Prix de la Metropole Lilloise','Prix des Comtes de Flandre','Prix du Grand Place Trot','Prix du Cote d Opale'],
+  },
+  'Graignes': {
+    debutant: ['Prix du Marais Cotentin','Prix des Prairies Normandes','Prix de la Manche','Prix de Carentan','Prix de Saint-Lo','Prix du Bocage Normand Trot'],
+    d:        ['Prix de Coutances','Prix d Avranches','Prix du Mortainais','Prix des Iles Chausey','Prix de Granville','Prix de la Cotentin'],
+    c:        ['Prix du Havrais','Prix des Besins','Prix du Calvados Trot','Prix de Cerisy','Prix des Bois de la Manche','Prix de la Vire'],
+    b:        ['Prix du Marechal des Logis','Prix des Fermes du Cotentin','Prix du Dedoublement du Bocage','Prix de la Liberation','Prix des Combattants','Prix du Val de Vire'],
+    a:        ['Prix des Champions Manchois','Prix du Cotentin Royal','Prix de la Normandie Trot','Prix des Abbesses de Cerisy','Prix du Roi de Normandie Trot','Prix des Ducs Cotentins'],
+  },
+  'Chatelet': {
+    debutant: ['Prix de la Basse-Sambre','Prix du Pays de Charleroi','Prix de la Meuse Trot','Prix des Wallons Trot','Prix de Namur Trot','Prix de Liege Trot'],
+    d:        ['Prix de la Senne Trot','Prix des Brasseries Belges','Prix de Ghent Trot','Prix d Anvers Trot','Prix de Bruges Trot','Prix des Ardennes Trot'],
+    c:        ['Prix du Roi des Belges Trot','Prix de Bruxelles Trot','Prix du Manneken Pis','Prix des Chocolatiers','Prix du Grand-Place Belge','Prix des Frites'],
+    b:        ['Prix de la Cour d Europe','Prix des Champions Belges Trot','Prix du Palais Royal Belge','Prix de la Forêt de Soignes','Prix du Waterloo Trot','Prix des Ducs de Brabant'],
+    a:        ['Prix des Grandes Dynasties Belges','Prix du Roi Albert Trot','Prix de la Cote Belge','Prix des Maitres Trot','Prix des Héros de Belgique','Prix du Lion Belge Trot'],
+  },
+
+};
+const RACE_NAMES_FALLBACK = {
+  debutant: ['Prix du Printemps','Prix de Aurore','Prix des Debutants','Prix de Espoir','Prix des Novices','Prix de la Chance'],
+  d:        ['Prix de la Vallee','Prix du Terroir','Prix des Amateurs','Prix de la Region','Prix du Bocage','Prix des Coteaux'],
+  c:        ['Prix du Plateau','Prix des Collines','Prix de la Plaine','Prix du Vignoble','Prix des Forets','Prix du Coteau'],
+  b:        ['Prix du Domaine','Prix du Manoir','Prix des Haras','Prix de la Jumenterie','Prix des Eleveurs','Prix du Champ'],
+  a:        ['Prix des Champions','Prix de Elite','Prix des Maitres','Prix du Prestige','Prix de la Gloire','Prix des Grands'],
+};
+
+function genericRaceName(venue, used, cnd) {
+  const lvl = !cnd.maxEarn ? 'a'
+    : cnd.maxEarn <= 8000  ? 'debutant'
+    : cnd.maxEarn <= 20000 ? 'd'
+    : cnd.maxEarn <= 45000 ? 'c'
+    : 'b';
+  const catalog = RACE_CATALOG[venue] || RACE_NAMES_FALLBACK;
+  const pool = (catalog[lvl] || catalog['a'] || RACE_NAMES_FALLBACK['a']).slice();
+  for (const name of pool) {
+    if (!used[name]) { used[name]=1; return name; }
+  }
+  const short = venue.replace(/-.*/,'').replace('ParisLongchamp','Lgchmp').replace('Saint','St').slice(0,8);
+  let n=2; let fb='Prix '+short;
+  while(used[fb]){ fb='Prix '+short+' '+toRoman(n); n++; }
+  used[fb]=1; return fb;
+}
+
+function toRoman(n){ return ['','I','II','III','IV','V','VI','VII','VIII'][n]||(''+n); }
+
+// ============ ENGAGEMENTS ============
+// G.entries = [{courseId, horseId, season, week, name, venue, fee}]
+function currentDay(){ return G.season*52 + G.week; }
+function dayOf(season,week){ return season*52 + week; }
+function engagementFee(prize){ return Math.max(150, Math.round(prize*0.01)); } // 1% de la dotation, min 150€
+// un cheval a-t-il déjà un engagement ce jour-là (même saison+semaine) ?
+function horseBusyThatDay(horseId,season,week){ return G.entries.some(e=>e.horseId===horseId && e.season===season && e.week===week); }
+// a-t-il déjà couru ce jour-ci ?
+function horseRacedToday(h){ return h.lastRaceDay===currentDay(); }
+function isEntered(courseId,horseId){ return G.entries.some(e=>e.courseId===courseId && e.horseId===horseId); }
+function entryForCourse(courseId){ return G.entries.find(e=>e.courseId===courseId); }
+function horseEntries(horseId){ return G.entries.filter(e=>e.horseId===horseId); }
+function enterRace(race,horse){
+  if (entryForCourse(race.id)){ showNotif('⚠️ Course déjà prise par un de tes chevaux'); return false; }
+  if (horse.injured){ showNotif('🤕 '+horse.name.split(' ')[0]+' est blessé'); return false; }
+  if (!isEligible(horse,race)){ showNotif('🚫 Non éligible'); return false; }
+  if (horseBusyThatDay(horse.id,race.season,race.week)){ showNotif('📅 '+horse.name.split(' ')[0]+' a déjà une course ce jour-là'); return false; }
+  const fee=engagementFee(race.prize);
+  if (G.money<fee){ showNotif('❌ Frais d\'engagement €'+fee.toLocaleString()+' — budget insuffisant'); return false; }
+  G.money-=fee;
+  G.entries.push({courseId:race.id,horseId:horse.id,season:race.season,week:race.week,name:race.name,venue:race.venue,grade:race.grade,prize:race.prize,fee});
+  saveGame(); showNotif('✅ '+horse.name.split(' ')[0]+' engagé (-€'+fee.toLocaleString()+' frais) — '+race.name); return true;
+}
+function cancelEntry(courseId){
+  const e=entryForCourse(courseId);
+  if (e && e.fee){ // remboursement 50% si forfait déclaré avant la semaine de course
+    const refund=Math.round(e.fee*0.5);
+    if (dayOf(e.season,e.week)>currentDay()){ G.money+=refund; showNotif('↩️ Forfait — €'+refund.toLocaleString()+' remboursé'); }
+  }
+  G.entries=G.entries.filter(x=>x.courseId!==courseId); saveGame();
+}
+function purgeOldEntries(){ G.entries=G.entries.filter(e=> e.season>G.season || (e.season===G.season && e.week>=G.week) ); }
+
+function updateRace(){ document.getElementById('race-money').textContent='€'+G.money.toLocaleString(); if(!G.todayMeetings||G.raceState==='select'){if(G.raceState==='select')G.todayMeetings=buildMeetings();} if(G.raceState==='select')renderRaceSelect(); else if(G.raceState==='result')renderRaceResult(); }
+
+function renderRaceSelect() {
+  const body=document.getElementById('race-body');
+  if (G.horses.length===0){ body.innerHTML=`<div class="empty-state"><div class="empty-icon">🏇</div><div>Achète un cheval pour courir.</div></div>`; return; }
+  const myEntriesNow=G.entries.filter(e=>e.season===G.season&&e.week===G.week);
+  const entriesBanner = myEntriesNow.length ? `<div style="background:rgba(201,168,76,0.15);border:1px solid var(--gold);border-radius:12px;padding:10px 12px;margin-bottom:12px"><div style="font-size:12px;font-weight:700;color:var(--green-dark);margin-bottom:4px">★ Tes engagés cette semaine (${myEntriesNow.length})</div>${myEntriesNow.map(e=>{const h=G.horses.find(x=>x.id===e.horseId);return `<div style="font-size:11px;color:var(--muted)">• ${e.name} — ${h?h.name.split(' ')[0]:'?'} 📍${e.venue}</div>`;}).join('')}</div>` : '';
+  body.innerHTML=`<div class="section-title-sm">🐎 Engager un cheval</div><div class="horse-selector" id="race-horse-selector" style="margin-bottom:16px"></div><div id="race-horse-preview"></div><div class="week-banner" style="margin-bottom:8px"><div><div style="font-size:11px;color:var(--muted)">Réunion</div><div class="week-val">Saison ${G.season} — Semaine ${G.week}/52</div></div><div style="text-align:right;font-size:11px;color:var(--muted)">${(CALENDAR[G.stable.disc]||[]).filter(c=>c.wk===G.week).length>0?'⭐ Grande semaine':'Réunion courante'}</div></div>${entriesBanner}<button class="btn-secondary" style="margin-bottom:12px" onclick="showPlanningModal()">📋 Planning des 3 prochaines semaines</button><div id="race-list"></div>`;
+  renderRaceHorseSelector(); renderRaceList();
+}
+function renderRaceHorseSelector() {
+  const sel=document.getElementById('race-horse-selector'); if(!sel)return;
+  sel.innerHTML=G.horses.map(h=>{
+    const unavailable = h.injured || horseRacedToday(h);
+    const tag = h.injured?' 🤕':horseRacedToday(h)?' ✓':((h.fatigue||0)>=60?' 😮‍💨':'');
+    return `<div class="horse-pill ${G.selectedHorse?.id===h.id?'selected':''}" style="${unavailable?'opacity:0.5':''}" onclick="selRaceHorse('${h.id}')">${h.emoji} ${h.name.split(' ')[0]}${tag}</div>`;
+  }).join('');
+  const pv=document.getElementById('race-horse-preview');
+  if (G.selectedHorse&&pv){ const h=G.selectedHorse; const names=statNames();
+    pv.innerHTML=`<div class="horse-stat-panel" style="margin-bottom:16px"><div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;margin-bottom:4px">${h.emoji} ${h.name} — OVR ${calcOverall(h)}</div><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${h.sex==='M'?'♂ mâle':'♀ femelle'} • ${Math.floor(h.age)} ans • Gains €${h.earnings.toLocaleString()}</div>${miniBar(names[0],h.s1,'#C9A84C')}${miniBar(names[1],h.s2,'#27AE60')}${miniBar(names[2],h.s3,'#2980B9')}${disc().dai?miniBar('Sûreté allure',h.surete||50,'#6B4C9A'):''}<div style="margin-top:8px;font-size:12px;color:var(--muted)">Forme: <strong style="color:${h.forma>60?'var(--green)':'#F5A623'}">${getForma(h)}%</strong> • Fatigue: <strong style="color:${(h.fatigue||0)<40?'var(--green)':(h.fatigue||0)<70?'#F5A623':'var(--red)'}">${h.fatigue||0}%</strong> • ${h.wins}V/${h.races}C</div>${h.injured?'<div style="color:var(--red);font-size:12px;margin-top:4px">🤕 Blessé — indisponible</div>':''}${(h.fatigue||0)>=60?'<div style="color:var(--red);font-size:12px;margin-top:4px">😮‍💨 Très fatigué — repos conseillé</div>':''}${disc().dai&&h.reliability<60?'<div style="color:#FF8C42;font-size:12px;margin-top:4px">⚠️ Risque de DAI élevé</div>':''}</div>`;
+  }
+}
+function selRaceHorse(id){ G.selectedHorse=G.horses.find(h=>String(h.id)===String(id)); renderRaceHorseSelector(); renderRaceList(); }
+function terrainMatch(h,venue){
+  const v=venueData(venue);
+  let pisteOk = h.prefPiste===v.piste;
+  let cordeOk = h.prefCorde==='—' || v.corde==='—' || h.prefCorde===v.corde;
+  return {pisteOk,cordeOk,v};
+}
+function renderRaceList() {
+  const list=document.getElementById('race-list'); if(!list)return;
+  const meetings=G.todayMeetings||(G.todayMeetings=buildMeetings());
+  const h=G.selectedHorse; const isTrot=disc().dai;
+  list.innerHTML=meetings.map((mt,mi)=>{
+    const v=mt.vdata;
+    const cordeTxt = v.corde==='—'?'Autostart':('Corde '+(v.corde==='G'?'gauche':'droite'));
+    const pisteTxt = (PISTE_EMOJI[v.piste]||'')+' '+v.piste;
+    const open = G.openMeeting===mi;
+    const eligCount = h ? mt.races.filter(r=>isEligible(h,r)).length : 0;
+    const head=`<div onclick="toggleMeeting(${mi})" style="cursor:pointer;background:var(--green-dark);color:white;border-radius:${open?'12px 12px 0 0':'12px'};padding:13px 14px;display:flex;align-items:center;gap:10px;margin-top:12px">
+      <div style="font-size:22px">🏟️</div>
+      <div style="flex:1"><div style="font-family:'Playfair Display',serif;font-weight:700;font-size:16px;color:var(--gold-light)">${mt.venue}${mt.hasFeature?' ⭐':''}</div><div style="font-size:10px;color:rgba(255,255,255,0.6)">${pisteTxt} • ${cordeTxt} • ${mt.races.length} courses${h?' • <span style="color:var(--gold-light)">'+eligCount+' éligibles</span>':''}</div></div>
+      <div style="font-size:18px;color:var(--gold-light)">${open?'▾':'▸'}</div>
+    </div>`;
+    if (!open) return head;
+    const body=mt.races.map((r,ri)=>{
+      const elig = h ? isEligible(h,r) : true;
+      const odds = (h&&elig)?calcOdds(calcOverall(h),r.diff,r):'—';
+      const tm = h?terrainMatch(h,r.venue):null;
+      let matchBadge='';
+      if (tm&&elig){ const bits=[]; if(!isTrot){bits.push(tm.cordeOk?'<span style="color:var(--green)">corde ✓</span>':'<span style="color:var(--red)">corde ✗</span>');} bits.push(tm.pisteOk?'<span style="color:var(--green)">terrain ✓</span>':'<span style="color:#999">terrain ✗</span>'); matchBadge=`<div style="font-size:10px;margin-top:3px">${bits.join(' • ')}</div>`; }
+      const reason = (h&&!elig)?eligibilityReason(h,r):'';
+      const condTxt = r.cond&&r.cond.label?r.cond.label:'';
+      const entered = h?isEntered(r.id,h.id):false;
+      const takenByOther = !entered && entryForCourse(r.id);
+      return `<div class="racecard" style="margin:0;border-radius:0;border-top:none;cursor:${(h&&elig)?'pointer':'default'};opacity:${(!h||elig)?1:0.5};${entered?'border-left:4px solid var(--green);background:rgba(27,94,53,0.06)':r.isFeature?'border-left:3px solid var(--gold)':''}" onclick="${(h&&elig)?`engageRace(${mi},${ri})`:''}">
+        <div class="racecard-header" style="border-bottom:1px dotted var(--border);padding-bottom:6px">
+          <span class="racecard-grade">${r.gradeLabel||r.grade}</span>${entered?'<span class="racecard-venue" style="background:var(--green)">★ ENGAGÉ</span>':''}${r.isFeature?'<span class="racecard-venue" style="background:var(--gold);color:var(--green-dark)">⭐ Black-Type</span>':''}${condTxt&&!r.isFeature?`<span class="racecard-venue" style="background:var(--purple)">${condTxt}</span>`:''}${r.cond&&r.cond.sex!=='T'?`<span class="racecard-venue" style="background:var(--red)">${r.cond.sex==='F'?'♀':'♂'}</span>`:''}
+          <div class="racecard-name" style="font-size:15px">${r.name}</div>
+          <div class="racecard-details">📏 ${r.distance} • ${r.cond?condLabelFull(r.cond):''}</div>
+          <div class="racecard-prize" style="font-size:16px">€${r.prize.toLocaleString()}</div>${matchBadge}
+          ${reason?`<div style="font-size:10px;color:var(--red);margin-top:3px">🚫 ${reason}</div>`:''}
+          ${takenByOther?`<div style="font-size:10px;color:var(--muted);margin-top:3px">★ pris par un autre de tes chevaux</div>`:''}
+        </div>
+        ${(h&&elig)?`<div class="runner-row mine"><div class="runner-num">${rnd(1,16)}</div><div class="runner-name">${h.name} (toi)${entered?' ★':''}</div><div class="runner-odds">${odds}/1</div></div>`:''}
+      </div>`;
+    }).join('');
+    return head+`<div style="border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;overflow:hidden">${body}</div>`;
+  }).join('');
+}
+function condLabelFull(c){
+  const parts=[];
+  if (c.ageMin===c.ageMax) parts.push(c.ageMin+' ans');
+  else parts.push(c.ageMin+'-'+c.ageMax+' ans');
+  if (c.sex==='F') parts.push('femelles');
+  else if (c.sex==='M') parts.push('mâles');
+  if (c.maxEarn!=null) parts.push('gains <'+(c.maxEarn/1000)+'k');
+  return parts.join(' • ');
+}
+function toggleMeeting(mi){ G.openMeeting = (G.openMeeting===mi?null:mi); renderRaceList(); }
+function calcOdds(ov,diff,race){
+  let base=6+(diff-1)*3-(ov-55)/8;
+  if (race && G.selectedHorse){ const tm=terrainMatch(G.selectedHorse,race.venue); if(tm.pisteOk)base-=1.2; if(!tm.cordeOk&&!disc().dai)base+=1.0; }
+  return Math.max(1.4,Math.round(base*10)/10);
+}
+
+async function engageRace(mi,ri) {
+  if (!G.selectedHorse){showNotif('⚠️ Choisis un cheval');return;}
+  if (G.selectedHorse.injured){showNotif('🤕 Cheval blessé. Repos requis.');return;}
+  const race=G.todayMeetings[mi].races[ri];
+  const h=G.selectedHorse;
+  if (!isEligible(h,race)){ showNotif('🚫 '+h.name.split(' ')[0]+' non éligible'); return; }
+  // 1 course par jour : déjà couru aujourd'hui, ou engagé sur une AUTRE course ce jour
+  if (horseRacedToday(h)){ showNotif('📅 '+h.name.split(' ')[0]+' a déjà couru aujourd\'hui'); return; }
+  const otherEntry=G.entries.find(e=>e.horseId===h.id && e.season===G.season && e.week===G.week && e.courseId!==race.id);
+  if (otherEntry){ showNotif('📅 Déjà engagé aujourd\'hui dans '+otherEntry.name); return; }
+  const myOv=calcOverall(h); const odds=calcOdds(myOv,race.diff,race);
+  G.currentRace=race; G.currentMI=mi; G.currentRI=ri; G.currentOdds=odds; G.raceState='running'; G.selectedBet=0;
+  const v=venueData(race.venue);
+  const fat=h.fatigue||0;
+  const fatWarn = fat>=50?`<div style="background:rgba(192,57,43,0.1);border-radius:8px;padding:8px;margin-bottom:10px;font-size:12px;color:var(--red)">⚠️ ${h.name.split(' ')[0]} est fatigué (${fat}%) — perf réduite et risque de blessure accru. Un repos serait préférable.</div>`:'';
+  document.getElementById('race-body').innerHTML=`
+    <div class="racecard" style="margin-bottom:12px;border-left:3px solid var(--gold)"><span class="racecard-grade">${race.gradeLabel||race.grade}</span><span class="racecard-venue">📍 ${race.venue}</span><div class="racecard-name">${race.name}</div><div class="racecard-details">📏 ${race.distance} • ${(PISTE_EMOJI[v.piste]||'')+' '+v.piste} • ${race.cond?condLabelFull(race.cond):''}</div></div>
+    ${fatWarn}
+    <div class="bet-box"><div style="font-weight:700;font-size:14px;margin-bottom:4px">🎰 Parier sur ${h.name.split(' ')[0]} ?</div><div style="font-size:12px;color:var(--muted)">Cote : ${odds}/1 • Forme ${getForma(h)}% • Fatigue ${fat}%</div><div class="bet-options"><div class="bet-chip" onclick="setBet(0,this)">Aucun</div><div class="bet-chip" onclick="setBet(500,this)">€500</div><div class="bet-chip" onclick="setBet(1000,this)">€1,000</div><div class="bet-chip" onclick="setBet(2000,this)">€2,000</div></div></div>
+    <button class="btn-primary" onclick="runRace()">🏁 Lancer la course</button>
+    <button class="btn-secondary" onclick="cancelRace()">Annuler</button>`;
+}
+function setBet(amount,el){ if(amount>G.money){showNotif('❌ Mise trop élevée');return;} G.selectedBet=amount; document.querySelectorAll('.bet-chip').forEach(c=>c.classList.remove('selected')); el.classList.add('selected'); }
+function cancelRace(){ G.raceState='select'; renderRaceSelect(); }
+
+async function runRace() {
+  const h=G.selectedHorse; const race=G.currentRace; const bet=G.selectedBet||0;
+  if (bet>0) G.money-=bet;
+  const d=disc();
+
+  // DAI check (trot uniquement)
+  let dai=false;
+  if (d.dai) {
+    const daiChance=Math.max(0.02,(70-(h.surete||50))/200);
+    if (Math.random()<daiChance) dai=true;
+  }
+
+  const ov=calcOverall(h); const formaBonus=(getForma(h)-50)/100;
+  const jockeyBonus=G.staff.find(s=>s.id==='jockey')?0.08:0;
+  // Bonus terrain et corde (prefPiste / prefCorde)
+  const tm=terrainMatch(h,race.venue);
+  let terrainMod=0;
+  if (tm.pisteOk) terrainMod+=0.06;
+  if (!tm.cordeOk && !d.dai) terrainMod-=0.05;
+  // Bonus adaptabilite : remplace partiellement le malus terrain si stat haute
+  const adaptBonus = ((h.adaptabilite||50)-50)/1000; // max +0.04 à 90
+  terrainMod += adaptBonus;
+  // Fatigue : malus progressif au-delà de 40%
+  const fat=h.fatigue||0;
+  const fatigueMod = fat>40 ? -((fat-40)/100)*0.25 : 0;
+  // Distance : bonus endurance sur longue distance, bonus vitesse sur courte
+  const distM = parseInt(race.distance)||2000;
+  const distKey = G.stable.disc==='plat'||G.stable.disc==='obstacle' ? 'endurance' : 'endurance';
+  const vitKey  = G.stable.disc==='plat' ? 'vitesse' : (G.stable.disc==='obstacle'?'vitesse':'vitesse');
+  let distMod = 0;
+  if (distM >= 2400) distMod =  ((h[distKey]||50)-ov)/300;   // endurance compte plus
+  if (distM <= 1400) distMod =  ((h[vitKey] ||50)-ov)/300;   // vitesse compte plus
+  // Régularité : réduit la variance
+  const reg = regulariteScore(h);
+  const regVarianceFactor = 0.6 + (reg/100)*0.4; // 0.6 à 1.0 — plus c'est haut, moins de surprises
+  const effOv=ov*(1+formaBonus*0.2+jockeyBonus+terrainMod+fatigueMod+distMod);
+  const diffPen=(race.diff-1)*5;
+  let winChance=clamp(0.5+(effOv-60-diffPen)/80,0.06,0.85);
+  const rand=Math.random();
+  let pos;
+  if (dai) pos='DAI';
+  else {
+    // Variance modulée par la régularité
+    const r2=Math.random();
+    const luck = (r2-0.5)*(1-regVarianceFactor)*0.2; // chance/malchance réduite si régulier
+    const adjWin = clamp(winChance+luck, 0.04, 0.88);
+    if (rand<adjWin*0.5) pos=1;
+    else if (rand<adjWin*0.75) pos=2;
+    else if (rand<adjWin*0.9) pos=3;
+    else pos=rnd(4,12);
+  }
+
+  // Générer les partants rivaux
+  const numRunners = rnd(8, 14);
+  const rivals = generateRivals(race, ov, pos, numRunners - 1);
+  const finalRanking = simulateFullRace(pos, numRunners, ov, rivals);
+  const playerDossard = 1;
+
+  // ── Animation via iframe race_v3.html (remplace l'ancienne anim CSS) ──
+  // Le jeu est en pause pendant que l'iframe joue la course ; on attend le
+  // postMessage('race-done') déclenché par le bouton « Continuer » de la course.
+  await playRaceIframe(h, race, pos, numRunners, finalRanking, bet);
+
+  let prize=0;
+  if (pos!=='DAI'){ prize=Math.round(race.prize*(race.scale[pos-1]||0)); }
+  G.money+=prize; h.races++; h.earnings+=prize;
+  if (pos===1){ h.wins++; G.totalWins++; G.seasonWins++; if(G.totalWins%3===0)G.prestige=Math.min(5,G.prestige+1); }
+  // usure : forme baisse, fatigue monte, marque le jour de course
+  // Forme calculée via getForma(h) — pas de write sur h.forma
+  const distKm=parseInt(race.distance)/1000;
+  const resist=stamina(h);
+  // un cheval résistant prend moins de fatigue (divisée par sa résistance)
+  h.fatigue=Math.min(100,(h.fatigue||0)+Math.round((rnd(28,40)+distKm*3)/resist));
+  h.lastRaceDay=currentDay();
+  // risque de blessure : fatigue + âge + grosse distance + mauvais terrain, atténué par la résistance
+  const vetReduce=G.staff.find(s=>s.id==='vet')?0.4:1;
+  let injuryRisk=0.02;
+  injuryRisk += Math.max(0,(h.fatigue-50))/100*0.25;
+  if (Math.floor(h.age)>=10) injuryRisk+=0.04;
+  if (distKm>=4) injuryRisk+=0.03;
+  if (!tm.pisteOk) injuryRisk+=0.02;
+  injuryRisk *= vetReduce / resist; // un cheval résistant se blesse moins
+  if (Math.random()<injuryRisk){
+    h.injured=true; h.injuryWeeks=rnd(2,5);
+    // Blessure : pénalise le mental (loseStreak +2)
+    h.loseStreak = (h.loseStreak||0) + 2;
+    showNotif('🤕 '+h.name.split(' ')[0]+' blessé — indisponible '+h.injuryWeeks+' sem.');
+    // annule ses futurs engagements (forfait forcé, sans remboursement)
+    G.entries=G.entries.filter(e=> e.horseId!==h.id || (e.season===G.season&&e.week===G.week) );
+  }
+  let betWin=0;
+  if (bet>0 && pos===1){ betWin=Math.round(bet*G.currentOdds); G.money+=betWin; }
+
+  // consomme l'engagement de cette course sans remboursement (la course a eu lieu)
+  // Mettre à jour le mental + bonus progression post-course (silencieux)
+  updateMentalAfterRace(h, pos);
+  applyRaceProgressBonus(h, pos);
+  G.entries=G.entries.filter(e=>e.courseId!==race.id);
+  // Retour au hub écurie, stats à jour — l'iframe a déjà montré le podium/résultat.
+  G.raceResult=null; G.selectedBet=0; G.selectedHorse=null; G.raceState='select'; saveGame();
+  showScreen('hub');            // rend le hub DERRIÈRE l'overlay…
+  closeRaceOverlay();           // …puis révèle le hub (pas de flash de l'écran d'engagement)
+  const net = prize + betWin - bet;       // résultat net de la course (prize + pari − mise)
+  showRaceBanner(h, pos, net);
+  if (h.injured) showNotif('🤕 ' + h.name.split(' ')[0] + ' blessé — voir l\'écurie');
+}
+
+// ── CÂBLAGE IFRAME race_v3.html ────────────────────────────────────────────────
+// Ouvre la course en plein écran et résout sur postMessage('race-done').
+function playRaceIframe(h, race, pos, numRunners, finalRanking, bet) {
+  return new Promise(resolve => {
+    const discMap = { plat:'plat', obstacle:'obstacle', attele:'trot', monte:'trot' };
+    const discParam = discMap[G.stable.disc] || 'plat';
+    const odds = G.currentOdds || 1;
+    const place = numRunners >= 8 ? 3 : 2;
+    const playerPos = (pos === 'DAI') ? numRunners : pos;
+    // net du pari, pré-calculé par le jeu (fait foi) : gain net si gagné, sinon -mise.
+    const betnet = bet > 0 ? ((pos === 1 ? Math.round(bet * odds) : 0) - bet) : null;
+
+    // Soies / robes déterministes par dossard (le jeu n'a pas de couleurs de casaque).
+    const SILKS = [['#1565C0','#FFFFFF','#F9A825'],['#B71C1C','#F5F5F5','#1565C0'],['#6A1B9A','#F9A825','#FFFFFF'],
+      ['#1B5E20','#FFFFFF','#F9A825'],['#E65100','#212121','#FFECB3'],['#00695C','#212121','#80CBC4'],
+      ['#C62828','#F5F5F5','#C62828'],['#0277BD','#F57F17','#0277BD'],['#AD1457','#FFFFFF','#F8BBD9'],
+      ['#283593','#FFEB3B','#283593'],['#4E342E','#FFFFFF','#8D6E63'],['#00838F','#FFFFFF','#4DD0E1'],
+      ['#558B2F','#212121','#C5E1A5'],['#AD1457','#FFFFFF','#F48FB1']];
+    const COATS = ['#3E2723','#7B3F00','#C8A060','#1A1A1A','#8D5524','#212121','#D7B899','#6D4C41',
+      '#37474F','#C4A882','#5D4037','#A1887F','#9E9E9E','#4E342E'];
+
+    const runners = finalRanking.map(r => {
+      const dossard = r.isPlayer ? 1 : (r.dossard || 2);
+      const s = SILKS[(dossard - 1) % SILKS.length];
+      return {
+        id: dossard,
+        name: r.isPlayer ? h.name : (r.name || ('Cheval ' + dossard)),
+        isPlayer: !!r.isPlayer,
+        pos: r.pos === 'DAI' ? numRunners : r.pos,
+        body: COATS[(dossard - 1) % COATS.length],
+        silk: r.isPlayer ? '#E8651A' : s[0],
+        cap:  r.isPlayer ? '#0A0A0A' : s[1],
+        trim: r.isPlayer ? '#FFFFFF' : s[2],
+      };
+    });
+
+    const params = new URLSearchParams({
+      autostart: '1', speed: '4', discipline: discParam,
+      pos: String(playerPos), bet: String(bet), odds: String(odds), place: String(place),
+      racename: race.name || '', track: race.venue || '', distance: race.distance || '',
+      grade: race.gradeLabel || race.grade || '',
+      runners: JSON.stringify(runners),
+    });
+    if (betnet != null) params.set('betnet', String(betnet));
+
+    const overlay = document.getElementById('race-overlay');
+    const frame = document.getElementById('race-frame');
+    function onMsg(e) {
+      if (!e.data || e.data.type !== 'race-done') return;
+      window.removeEventListener('message', onMsg);
+      resolve(e.data);            // l'overlay reste visible jusqu'au switch vers le hub
+    }
+    window.addEventListener('message', onMsg);
+    frame.src = 'race_v3.html?' + params.toString();
+    overlay.style.display = 'block';
+  });
+}
+
+function closeRaceOverlay() {
+  const overlay = document.getElementById('race-overlay');
+  const frame = document.getElementById('race-frame');
+  if (overlay) overlay.style.display = 'none';
+  if (frame) frame.src = 'about:blank';   // arrête la course
+}
+
+// Bandeau de résultat en bas du hub, 3 s : position + gain/perte net + cheval.
+// Doré si victoire, vert si gain net, rouge si perte, brun si DAI.
+function showRaceBanner(h, pos, net) {
+  const old = document.getElementById('race-banner'); if (old) old.remove();
+  const dai = pos === 'DAI', victory = pos === 1;
+  const bg = victory ? 'linear-gradient(135deg,#C9A84C,#A8882A)'
+           : dai     ? '#6E4B1C'
+           : net >= 0 ? '#1B7A3D' : '#B0392B';
+  const fg = victory ? '#0A2E1A' : '#FFFFFF';
+  const posLbl = dai ? 'Disqualifié (DAI)'
+               : pos === 1 ? '1ᵉʳ 🏆' : pos === 2 ? '2ᵉ 🥈' : pos === 3 ? '3ᵉ 🥉' : pos + 'ᵉ';
+  const netLbl = net > 0 ? `+€${net.toLocaleString()}` : net < 0 ? `−€${Math.abs(net).toLocaleString()}` : '€0';
+  const n = h.name.split(' ')[0];
+  const el = document.createElement('div');
+  el.id = 'race-banner';
+  el.style.cssText = `position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);width:100%;max-width:430px;`
+    + `z-index:99999;background:${bg};color:${fg};padding:14px 18px;border-radius:14px 14px 0 0;`
+    + `box-shadow:0 -4px 22px rgba(0,0,0,0.4);font-family:'Inter',sans-serif;display:flex;align-items:center;`
+    + `justify-content:space-between;gap:12px;transition:transform .35s cubic-bezier(.2,.8,.2,1);`;
+  el.innerHTML =
+    `<div style="min-width:0"><div style="font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n} — ${posLbl}</div>`
+    + `<div style="font-size:12px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${h.name}</div></div>`
+    + `<div style="font-family:'Playfair Display',serif;font-weight:800;font-size:20px;white-space:nowrap">${netLbl}</div>`;
+  document.body.appendChild(el);
+  // setTimeout (pas rAF) → s'affiche même si rAF est throttlé (onglet en arrière-plan).
+  setTimeout(() => { el.style.transform = 'translate(-50%,0)'; }, 30);
+  setTimeout(() => { el.style.transform = 'translate(-50%,110%)'; setTimeout(() => el.remove(), 400); }, 3000);
+}
+
+// ============ PARTANTS RIVAUX ============
+const RIVAL_HORSE_FIRST = ['Éclair','Tempête','Roi','Flash','Tonnerre','Star','Prince','Dame','Foudre',
+  'Vaillant','Étoile','Mistral','Aurore','Titan','Velours','Comète','Diamant','Galop','Soleil',
+  'Idéal','Hermès','Jupiter','Kaiser','Quartz','Rubis','Saphir','Opale','Jade','Ambre','Silex',
+  'Rafale','Orage','Brume','Neige','Glace','Feu','Vent','Mer','Roc','Ciel'];
+const RIVAL_HORSE_LAST = ['du Bois','de Marne','Royal','Bleu','Noir','Or','Blanc','Doré','Fier',
+  'Ardent','Léger','Rapide','Fort','Noble','Vif','Franc','Pur','Beau','Grand','Fier',
+  'du Roi','de la Reine','des Princes','Impérial','du Nord','du Sud','de Soleil','des Vents'];
+
+function generateRivals(race, playerOv, pos, numRivals) {
+  // Générer des rivaux crédibles selon le niveau de la course
+  const diff = race.diff || 2;
+  const rivals = [];
+  const usedNames = new Set();
+
+  for (let i = 0; i < numRivals; i++) {
+    let name;
+    do {
+      const f = RIVAL_HORSE_FIRST[Math.floor(Math.random()*RIVAL_HORSE_FIRST.length)];
+      const l = RIVAL_HORSE_LAST[Math.floor(Math.random()*RIVAL_HORSE_LAST.length)];
+      name = f + ' ' + l;
+    } while (usedNames.has(name));
+    usedNames.add(name);
+
+    // OVR rival centré sur le niveau de la course avec variance
+    const baseOv = 40 + diff * 8 + rnd(-10, 10);
+    const dossard = i + 2; // le joueur prend le 1
+    rivals.push({ name, ov: clamp(baseOv, 30, 95), dossard, isPlayer: false });
+  }
+
+  // Trier les rivaux par OVR pour calculer positions finales cohérentes
+  return rivals;
+}
+
+// Simule la course entière et renvoie le classement final
+function simulateFullRace(playerPos, numRunners, playerOv, rivals) {
+  // Construire le classement complet
+  const all = [{ name: null, pos: playerPos, isPlayer: true, ov: playerOv }];
+
+  // Assigner des positions aux rivaux de façon cohérente
+  const takenPos = new Set([playerPos === 'DAI' ? 99 : playerPos]);
+  const sortedRivals = [...rivals].sort((a, b) => b.ov - a.ov);
+
+  let availPos = [];
+  for (let p = 1; p <= numRunners; p++) {
+    if (!takenPos.has(p)) availPos.push(p);
+  }
+
+  sortedRivals.forEach((r, i) => {
+    // Les meilleurs rivaux tendent à finir devant
+    const posIdx = Math.min(i + rnd(0, 2), availPos.length - 1);
+    const rPos = availPos.splice(posIdx, 1)[0];
+    all.push({ name: r.name, pos: rPos, isPlayer: false, ov: r.ov, dossard: r.dossard });
+    takenPos.add(rPos);
+  });
+
+  return all.sort((a, b) => (a.pos === 'DAI' ? 999 : a.pos) - (b.pos === 'DAI' ? 999 : b.pos));
+}
+
+function raceCommentary(h,race,pos,d) {
+  const n=h.name;
+  if (pos==='DAI') {
+    return [
+      `🏁 Départ — ${n} prend le trot dans le peloton`,
+      `📍 ${n} est bien placé à mi-parcours`,
+      `⚠️ ${n} se met au galop dans le dernier tournant...`,
+      `🟠 DISQUALIFIÉ ! ${n} passe le poteau au galop (DAI). Aucun gain.`,
+    ];
+  }
+  const lines=[`🏁 C'est parti ! ${n} ${d.dai?'prend le trot':'s\'installe'} dans le peloton`];
+  if (d.name==='Obstacle') lines.push(`🚧 ${n} franchit les obstacles avec ${pos<=3?'maîtrise':'difficulté'}`);
+  else lines.push(`📍 À mi-parcours, ${n} reste bien placé`);
+  if (pos<=2){ lines.push(`⚡ Dernière ligne droite — ${n} accélère !`); lines.push(pos===1?`🏆 VICTOIRE ! ${n} s'impose à ${race.venue} !`:`🥈 ${n} échoue de peu, 2e !`); }
+  else if (pos===3){ lines.push(`💪 ${n} revient fort sur la fin`); lines.push(`🥉 ${n} accroche le podium en 3e !`); }
+  else { lines.push(`😤 ${n} ne peut pas suivre`); lines.push(`❌ ${n} termine ${pos}e.`); }
+  return lines;
+}
+
+function renderRaceResult() {
+  const r=G.raceResult; const body=document.getElementById('race-body');
+  const h=G.selectedHorse;
+  let cls, posDisplay, label;
+  if (r.pos==='DAI'){ cls='dai'; posDisplay='🟠'; label='DISQUALIFIÉ (DAI)'; }
+  else { cls=r.pos===1?'first':r.pos<=3?'podium':'lose'; posDisplay=r.pos===1?'🏆':r.pos===2?'🥈':r.pos===3?'🥉':'💨'; label=r.pos===1?'1ère place 🏆':r.pos===2?'2ème place 🥈':r.pos===3?'3ème place 🥉':r.pos+'ème place'; }
+
+  // Classement complet (depuis raceResult si sauvegardé, sinon reconstruit)
+  const ranking = r.finalRanking || [];
+  const rankingHtml = ranking.length > 0 ? `
+    <div style="background:var(--panel);border-radius:12px;padding:14px;border:1px solid var(--border);margin-bottom:14px">
+      <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:700;margin-bottom:10px;color:var(--green-dark)">📋 Classement</div>
+      ${ranking.slice(0,8).map((runner,i) => {
+        const isP = runner.isPlayer;
+        const posLbl = runner.pos==='DAI'?'DAI':(runner.pos+'e');
+        const medal = runner.pos===1?'🥇':runner.pos===2?'🥈':runner.pos===3?'🥉':'';
+        return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;margin-bottom:3px;background:${isP?'rgba(201,168,76,0.12)':'transparent'}">
+          <div style="font-family:'Playfair Display',serif;font-weight:700;width:28px;font-size:12px;color:${runner.pos<=3?'var(--gold)':'var(--muted)'}">${posLbl}${medal}</div>
+          <div style="flex:1;font-size:13px;font-weight:${isP?'700':'400'};color:${isP?'var(--green-dark)':'var(--text)'}">${isP?(h?.name||'Toi'):runner.name}</div>
+          ${isP&&r.prize>0?`<div style="font-size:12px;font-weight:700;color:var(--green)">+€${r.prize.toLocaleString()}</div>`:''}
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  body.innerHTML=`
+    <div class="result-banner ${cls}">
+      <div class="result-pos ${cls}">${posDisplay}</div>
+      <div class="result-sub ${cls}">${label} — ${r.race.name}</div>
+      ${r.pos!=='DAI'&&r.prize>0?`<div class="result-prize ${cls}">+€${r.prize.toLocaleString()}</div>`:`<div class="result-prize ${cls}">Aucun gain</div>`}
+    </div>
+    ${r.bet>0?`<div class="bet-box" style="text-align:center">${r.betWin>0?`<div style="color:var(--green);font-weight:700">🎰 Pari gagné ! +€${r.betWin.toLocaleString()}</div>`:`<div style="color:var(--red);font-weight:700">🎰 Pari perdu : -€${r.bet.toLocaleString()}</div>`}</div>`:''}
+    ${rankingHtml}
+    <div style="background:var(--panel);border-radius:12px;padding:14px;border:1px solid var(--border);margin-bottom:14px;font-size:13px;line-height:1.9">
+      <div>💰 Budget : <strong>€${G.money.toLocaleString()}</strong></div>
+      <div>🐴 ${h?.name} — ${h?.wins}V/${h?.races}C</div>
+      <div>💚 Forme : ${getForma(h)}% • 😮‍💨 Fatigue : ${h?.fatigue||0}%</div>
+      ${r.injured?`<div style="color:var(--red);font-weight:700">🤕 ${h?.name?.split(' ')[0]} s'est blessé — indisponible ${h?.injuryWeeks} semaines</div>`:''}
+    </div>
+    <button class="btn-primary" onclick="backToMeeting()">🏇 Autre course cette semaine</button>
+    <button class="btn-gold" onclick="nextWeekFromRace()">⏭️ Semaine suivante</button>
+    <button class="btn-secondary" onclick="showScreen('hub')">← Écurie</button>`;
+  document.getElementById('race-money').textContent='€'+G.money.toLocaleString();
+}
+function backToMeeting(){ G.raceState='select'; G.raceResult=null; G.selectedHorse=null; G.selectedBet=0; renderRaceSelect(); }
+function nextWeekFromRace(){ G.raceResult=null; G.selectedHorse=null; G.selectedBet=0; G.raceState='select'; advanceWeek(); G.todayMeetings=buildMeetings(); renderRaceSelect(); }
+function newRace(){ backToMeeting(); }
+
+// ============ BANQUE ============
+const LOAN_OPTIONS = [
+  { amount: 5000,  weeks: 8,  rate: 0.03, label: '€5,000 — 8 sem. — 3%/sem.' },
+  { amount: 10000, weeks: 12, rate: 0.025, label: '€10,000 — 12 sem. — 2.5%/sem.' },
+  { amount: 20000, weeks: 20, rate: 0.02, label: '€20,000 — 20 sem. — 2%/sem.' },
+  { amount: 50000, weeks: 26, rate: 0.018, label: '€50,000 — 26 sem. — 1.8%/sem.' },
+];
+
+function showBankModal() {
+  const hasLoan = G.loan > 0 && G.loanWeeksLeft > 0;
+  let html = '';
+  if (hasLoan) {
+    const weeklyPayment = Math.round(G.loan / G.loanWeeksLeft);
+    const weeklyInterest = Math.round(weeklyPayment * G.loanRate);
+    html += `<div style="background:rgba(192,57,43,0.08);border-left:3px solid var(--red);border-radius:4px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.8">
+      <div style="font-weight:700;color:var(--red);margin-bottom:4px">Prêt en cours</div>
+      <div>Capital restant : <strong>€${G.loan.toLocaleString()}</strong></div>
+      <div>Durée restante : <strong>${G.loanWeeksLeft} semaines</strong></div>
+      <div>Mensualité : <strong>€${(weeklyPayment+weeklyInterest).toLocaleString()}/sem.</strong> (dont €${weeklyInterest.toLocaleString()} intérêts)</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:14px">Remboursez d abord votre prêt avant d en contracter un nouveau.</div>`;
+  } else {
+    html += `<div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">Empruntez pour acheter un cheval ou payer les frais. Les intérêts s appliquent chaque semaine sur la mensualité.</div>`;
+    html += LOAN_OPTIONS.map((opt,i) => {
+      const totalInterest = Math.round(opt.amount * opt.rate * opt.weeks);
+      const totalRepay = opt.amount + totalInterest;
+      return `<div style="background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--green)">€${opt.amount.toLocaleString()}</div>
+          <div style="font-size:11px;color:var(--muted)">${opt.weeks} semaines</div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+          Taux : ${(opt.rate*100).toFixed(1)}%/sem. • Total remboursé : €${totalRepay.toLocaleString()} • Intérêts : €${totalInterest.toLocaleString()}
+        </div>
+        <button class="btn-gold" style="margin:0" onclick="takeLoan(${i})">Emprunter €${opt.amount.toLocaleString()}</button>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('bank-modal-content').innerHTML = html;
+  document.getElementById('bank-modal').classList.add('show');
+}
+
+function takeLoan(optIdx) {
+  if (G.loan > 0) { showNotif('❌ Prêt déjà en cours'); return; }
+  const opt = LOAN_OPTIONS[optIdx];
+  G.money += opt.amount;
+  G.loan = opt.amount;
+  G.loanWeeksLeft = opt.weeks;
+  G.loanRate = opt.rate;
+  saveGame();
+  showNotif('🏦 Prêt de €'+opt.amount.toLocaleString()+' accordé !');
+  closeModal('bank-modal');
+  updateHub();
+}
+
+// ============ BREEDING ============
+function updateBreeding() {
+  document.getElementById('breeding-money').textContent='€'+G.money.toLocaleString();
+  document.getElementById('mare-display').innerHTML=G.breedMare?`${G.breedMare.emoji} <strong>${G.breedMare.name.split(' ')[0]}</strong><br><span style="font-size:11px;color:var(--muted)">OVR ${calcOverall(G.breedMare)}</span>`:'Choisir';
+  document.getElementById('stallion-display').innerHTML=G.breedStallion?`${G.breedStallion.emoji} <strong>${G.breedStallion.name.split(' ')[0]}</strong><br><span style="font-size:11px;color:var(--muted)">OVR ${calcOverall(G.breedStallion)}</span>`:'Choisir';
+  document.getElementById('slot-mare').classList.toggle('filled',!!G.breedMare);
+  document.getElementById('slot-stallion').classList.toggle('filled',!!G.breedStallion);
+  const preview=document.getElementById('breed-preview');
+  if (G.breedMare&&G.breedStallion){ const studBonus=G.staff.find(s=>s.id==='stud')?8:0; const names=statNames();
+    const e1=Math.round((G.breedMare.s1+G.breedStallion.s1)/2), e2=Math.round((G.breedMare.s2+G.breedStallion.s2)/2), e3=Math.round((G.breedMare.s3+G.breedStallion.s3)/2);
+    const ep=Math.round((G.breedMare.potential+G.breedStallion.potential)/2)+studBonus;
+    preview.innerHTML=`<div class="horse-stat-panel"><div style="font-size:13px;font-weight:700;margin-bottom:10px">🔮 Poulain estimé</div>${miniBar(names[0],e1,'#C9A84C')}${miniBar(names[1],e2,'#27AE60')}${miniBar(names[2],e3,'#2980B9')}<div style="font-size:12px;color:var(--muted);margin-top:8px">Potentiel : ~${ep} <span class="star-rating">${starRating(ep)}</span>${studBonus?' (+haras)':''}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">⏳ Gestation : 4 semaines</div></div>`;
+    document.getElementById('btn-breed').disabled=false;
+  } else { preview.innerHTML=''; document.getElementById('btn-breed').disabled=true; }
+  const foals=document.getElementById('foals-list');
+  foals.innerHTML=G.foals.length===0?`<div style="color:var(--muted);font-size:13px">Aucun poulain en gestation.</div>`:G.foals.map(f=>`<div class="staff-card"><div style="font-weight:700;font-size:14px">${f.horse.emoji} ${f.horse.name}</div><div style="font-size:12px;color:var(--muted)">📜 ${f.horse.sire.split(' ')[0]} × ${f.horse.dam.split(' ')[0]} • Naissance dans ${f.weeksLeft} sem.</div></div>`).join('');
+}
+function openBreedPicker(type) {
+  const wantSex=type==='mare'?'F':'M';
+  const elig=G.horses.filter(h=>h.sex===wantSex&&h.age>=3);
+  document.getElementById('breed-picker-title').textContent=type==='mare'?'Choisir une jument ♀':'Choisir un étalon ♂';
+  document.getElementById('breed-picker-list').innerHTML=elig.length===0?`<div class="empty-state"><div class="empty-icon">${wantSex==='F'?'♀':'♂'}</div><div>Aucun ${wantSex==='F'?'jument':'étalon'} de 3 ans+ disponible.</div></div>`:elig.map(h=>`<div class="horse-card" onclick="pickBreed('${type}','${h.id}')"><div class="horse-card-row"><div class="horse-emoji">${h.emoji}</div><div class="horse-info"><div class="horse-name">${h.name} ${h.sex==='M'?'♂':'♀'}</div><div class="horse-meta">${Math.floor(h.age)} ans • OVR ${calcOverall(h)} <span class="star-rating">${starRating(h.potential)}</span></div></div><div class="horse-overall">${calcOverall(h)}</div></div></div>`).join('');
+  document.getElementById('breed-picker').classList.add('show');
+}
+function pickBreed(type,id){ const h=G.horses.find(x=>String(x.id)===String(id)); if(type==='mare')G.breedMare=h; else G.breedStallion=h; closeModal('breed-picker'); updateBreeding(); }
+function doBreed() {
+  if (!G.breedMare||!G.breedStallion)return;
+  if (G.money<3000){showNotif('❌ Frais de saillie : €3,000');return;}
+  G.money-=3000;
+  const foal=generateHorse(null,null,{m:G.breedStallion,f:G.breedMare});
+  G.foals.push({horse:foal,weeksLeft:4});
+  showNotif(`🧬 Saillie réussie ! ${foal.name} dans 4 semaines.`);
+  G.breedMare=null; G.breedStallion=null; saveGame(); updateBreeding();
+}
+
+// ============ SAVE ============
+const SAVE_KEY='turf_france_save_v1';
+function saveGame(){ try{ localStorage.setItem(SAVE_KEY,JSON.stringify({stable:G.stable,money:G.money,week:G.week,season:G.season,day:G.day||1,prestige:G.prestige,totalWins:G.totalWins,horses:G.horses,foals:G.foals,staff:G.staff,rivals:G.rivals,seasonWins:G.seasonWins,entries:G.entries,loan:G.loan||0,loanWeeksLeft:G.loanWeeksLeft||0,loanRate:G.loanRate||0})); }catch(e){} }
+function migrateHorse(h, discKey) {
+  // Migration save v1 (s1/s2/s3) vers save v2 (stats par discipline)
+  const statsDef = DISC_STATS[discKey] || DISC_STATS.plat;
+  const ov = Math.round(((h.s1||55)+(h.s2||55)+(h.s3||55))/3);
+  statsDef.forEach(s => {
+    if (h[s.key] === undefined || h[s.key] === null) {
+      h[s.key] = clamp(ov + Math.floor((Math.random()*20)-10), 25, 90);
+    }
+  });
+  if (!h.evolType)      h.evolType   = ['precoce','normal','tardif'][Math.floor(Math.random()*3)];
+  if (!h.declinType)    h.declinType = ['precoce','normal','long'][Math.floor(Math.random()*3)];
+  if (!h.potentialBase) h.potentialBase = h.potential || ov+10;
+  if (!h.potential)     h.potential  = h.potentialBase;
+  if (h.trainCount === undefined) h.trainCount = 0;
+  if (!h.prefPiste) h.prefPiste = 'Herbe';
+  if (!h.prefCorde) h.prefCorde = '—';
+  if (!h.trainProgram)      h.trainProgram      = 'balanced';
+  if (!h.trainIntensity)    h.trainIntensity    = 'normal';
+  if (h.recentWinBonus  === undefined) h.recentWinBonus  = 0;
+  if (h.loseStreak      === undefined) h.loseStreak      = 0;
+  if (h.weeksSinceRace  === undefined) h.weeksSinceRace  = 0;
+  return h;
+}
+function loadGame(){ try{ const raw=localStorage.getItem(SAVE_KEY); if(!raw)return false; const d=JSON.parse(raw); if(!d.stable)return false; Object.assign(G,{stable:d.stable,money:d.money,week:d.week,season:d.season,prestige:d.prestige,totalWins:d.totalWins,horses:d.horses||[],foals:d.foals||[],staff:d.staff||[],rivals:d.rivals||[],seasonWins:d.seasonWins||0,entries:d.entries||[],day:d.day||1,loan:d.loan||0,loanWeeksLeft:d.loanWeeksLeft||0,loanRate:d.loanRate||0}); if(G.rivals.length===0)initRivals(); const discKey=G.stable?G.stable.disc:'plat'; G.horses.forEach(h=>migrateHorse(h,discKey)); G.foals.forEach(f=>migrateHorse(f.horse,discKey)); return true; }catch(e){return false;} }
+function resetGame(){ if(!confirm('Effacer la sauvegarde et recommencer ?'))return; localStorage.removeItem(SAVE_KEY); location.reload(); }
+window.addEventListener('DOMContentLoaded',()=>{ if(loadGame()){ refreshMarketHorses(); showScreen('hub'); showNotif('💾 Partie reprise'); } });
+
+// ============ UTILS ============
+function rnd(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
+function clamp(v,min,max){ return Math.max(min,Math.min(max,v)); }
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+function showNotif(msg){ const el=document.getElementById('notification'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2800); }
+</script>
+<!-- PWA : enregistrement du service worker (offline + installable). Échoue
+     silencieusement en file:// — fonctionne en HTTP(S), ex. GitHub Pages. -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
