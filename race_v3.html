@@ -602,65 +602,71 @@ function drawBg(corner) {
   }
 }
 
-// Photo plein cadre, parallaxe x0.4, tuilage miroir → aucune couture visible.
+// Photo STATIQUE (ciel + tribune) : calée en hauteur, centrée, ne défile plus.
+// C'est le SOL animé (drawTrackFX) qui porte toute la sensation de vitesse.
 function drawBgImage() {
   const dw = H * (bgImg.width / bgImg.height);   // largeur image calée sur la hauteur du canvas
-  const worldLeft = bgOff * 0.4;                 // parallaxe : 0.4× le sol (spec SO-Touch)
-  let k = Math.floor(worldLeft / dw);
-  for (; k * dw - worldLeft < W; k++) {
-    const sx = k * dw - worldLeft;
-    ctx.save();
-    if (((k % 2) + 2) % 2 === 1) {                // tuile impaire = miroir → continuité
-      ctx.translate(sx + dw, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(bgImg, 0, 0, dw, H);
-    } else {
-      ctx.drawImage(bgImg, sx, 0, dw, H);
-    }
-    ctx.restore();
-  }
+  ctx.drawImage(bgImg, (W - dw) / 2, 0, dw, H);  // centrée, immobile
 }
 
-// Effets de piste conservés PAR-DESSUS la photo (rayures défilantes, rails,
-// poteaux, lignes de fuite) — semi-transparents pour laisser respirer le décor.
+// ── SOL ANIMÉ (couche entre le PNG statique et les chevaux) ───────────────────
+// Bande du bas : herbe rayée (plat/obstacle/défaut) ou sable (trot/Vincennes) qui
+// défile de droite à gauche à la vitesse de la course → sensation de vitesse au
+// sol pendant que le ciel reste fixe. Rail blanc fixe au bord supérieur. Léger
+// motion blur des rayures en sprint final.
 function drawTrackFX(corner) {
-  const skew = corner * 0.04;
-  ctx.save();
-  if (Math.abs(skew) > 0.001) ctx.transform(1, 0, skew, 1, 0, 0);
+  const top = HORIZON;                                  // bord supérieur du sol
+  const sprint = progress > 0.86 ? (progress - 0.86) / 0.14 : 0;
+  if (DISCIPLINE === 'trot') drawSand(top, sprint);
+  else drawGrass(top, sprint);
 
-  // Rayures de piste — sensation de vitesse au sol
-  const sw = 44;
-  for (let i = 0; i < Math.ceil(W / sw) + 2; i++) {
-    const sx = ((bgOff * 2.2 + i * sw) % (W + sw)) - sw;
-    if (i % 2 === 0) {
-      ctx.fillStyle = 'rgba(0,0,0,0.10)';
-      ctx.fillRect(sx, HORIZON, sw, H - HORIZON);
+  // Rail : ligne blanche horizontale FIXE (séparation décor / piste).
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';           // halo
+  ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(W, top); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(0, top); ctx.lineTo(W, top); ctx.stroke();
+}
+
+// Herbe tondue : vert clair (fond) + rayures verticales vert foncé qui défilent.
+function drawGrass(top, sprint) {
+  const gH = H - top;
+  const g = ctx.createLinearGradient(0, top, 0, H);     // dégradé de profondeur
+  g.addColorStop(0, '#2E8038'); g.addColorStop(1, '#1A5622');
+  ctx.fillStyle = g; ctx.fillRect(0, top, W, gH);
+
+  const sw = 46, period = sw * 2, scroll = bgOff * 2.4; // défile à gauche à la vitesse de la course
+  const passes = sprint > 0 ? 3 : 1;                    // passes fantômes = motion blur en sprint
+  ctx.fillStyle = '#16441C';
+  for (let p = 0; p < passes; p++) {
+    ctx.globalAlpha = p === 0 ? 0.5 : 0.5 * 0.45 * sprint;
+    const off = scroll + p * (10 + sprint * 20);        // léger smear horizontal
+    let x = -(((off % period) + period) % period);
+    for (; x < W + sw; x += period) ctx.fillRect(x, top, sw, gH);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Sable (trot/Vincennes) : beige + fines stries claires/sombres qui défilent.
+function drawSand(top, sprint) {
+  const gH = H - top;
+  const g = ctx.createLinearGradient(0, top, 0, H);
+  g.addColorStop(0, '#D8C291'); g.addColorStop(1, '#B6975F');
+  ctx.fillStyle = g; ctx.fillRect(0, top, W, gH);
+
+  const period = 60, scroll = bgOff * 2.2;
+  const passes = sprint > 0 ? 2 : 1;
+  for (let p = 0; p < passes; p++) {
+    ctx.globalAlpha = (p === 0 ? 1 : sprint) * 0.55;
+    const off = scroll + p * (8 + sprint * 16);
+    let x = -(((off % period) + period) % period);
+    for (; x < W + period; x += period) {
+      ctx.fillStyle = 'rgba(255,242,205,0.22)'; ctx.fillRect(x, top, 3, gH);
+      ctx.fillStyle = 'rgba(110,82,45,0.16)';  ctx.fillRect(x + period * 0.5, top, 2, gH);
     }
   }
-  // Lignes de fuite (perspective)
-  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-  ctx.lineWidth = 1;
-  for (let vl = 0; vl < 8; vl++) {
-    ctx.beginPath(); ctx.moveTo(W/2, HORIZON); ctx.lineTo((vl/7)*W, H); ctx.stroke();
-  }
-  ctx.restore();
-
-  // Rails haut + bas — délimitent la piste de course
-  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, HORIZON); ctx.lineTo(W, HORIZON); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-  ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0, H*0.96); ctx.lineTo(W, H*0.96); ctx.stroke();
-
-  // Poteaux des rails (défilent)
-  for (let p = 0; p < 14; p++) {
-    const px = ((bgOff * 3.5 + p * 62) % (W + 62)) - 31;
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.moveTo(px, HORIZON+2); ctx.lineTo(px, HORIZON+12); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(px, H*0.94); ctx.lineTo(px, H*0.99); ctx.stroke();
-  }
+  ctx.globalAlpha = 1;
 }
 
 function drawBgProcedural(corner) {
