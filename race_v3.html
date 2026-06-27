@@ -212,8 +212,11 @@ const LANES = RUNNERS.map((r, i) =>
   LANE_T + (LANE_B - LANE_T) * LANE_SLOT[i] + (((i * 67) % 13 - 6) * 0.0006)   // micro-jitter
 );
 
-// Ordre de dessin par profondeur — constant (LANES ne change pas) → précalculé 1×.
-const DRAW_ORDER = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => LANES[a.i] - LANES[b.i]);
+// Y ANIMÉ (CHANTIER 2) : `_y` = position verticale courante (lerp vers une lane cible).
+// Le z-order n'utilise PLUS de lane fixe — il est trié par `_y` chaque frame (CHANTIER 3).
+const LANE_CENTER = (LANE_T + LANE_B) / 2;
+const LANE_H = (LANE_B - LANE_T) / Math.max(1, RUNNERS.length - 1);
+RUNNERS.forEach((r, i) => { r._y = LANES[i]; });
 
 // ── STANDINGS & CAMÉRA (side-scroller SO-Touch) ──────────────────────────────
 // Caméra fixe : les chevaux restent dans une bande centrée, c'est le fond qui
@@ -255,6 +258,21 @@ function cornerAmt(p) {
 // Mappe la BANDE des lanes [LANE_T..LANE_B] sur [0..1] → vrai contraste de taille.
 function laneDepth(yPct) {
   return Math.max(0, Math.min(1, (yPct - LANE_T) / (LANE_B - LANE_T)));
+}
+
+// CHANTIER 2 — lane Y CIBLE d'un cheval (déterministe). Début : resserrement vers le
+// centre. En course : légères oscillations ±~1 lane. Sprint final : les bien classés
+// (rank 0..2) cherchent la corde (lane intérieure = haut). renderFrame lerp vers ça.
+function targetLaneY(r, i, p, rank) {
+  const base = LANES[i];
+  const conv = Math.max(0, 1 - p / 0.15);                       // 1 au départ → 0 à p=0.15
+  let y = base + (LANE_CENTER - base) * conv * 0.55;            // resserrement initial
+  y += Math.sin(p * 6.5 + r.id * 1.7) * LANE_H * 0.9 * (1 - conv); // oscillations en course
+  if (p > 0.85) {                                               // sprint : recherche de corde
+    const pull = Math.max(0, 1 - rank / 3) * (p - 0.85) / 0.15;
+    y += ((LANE_T + LANE_H * 0.5) - y) * pull * 0.6;
+  }
+  return Math.max(LANE_T, Math.min(LANE_B, y));
 }
 
 // ── DESSIN CHEVAL ─────────────────────────────────────────────────────────────
@@ -605,8 +623,8 @@ const RACE_DIST = (() => {
 
 // Palette des bandes selon la surface. sky = ciel gris-bleu statique (réf. SO-Touch).
 const COL = IS_SAND
-  ? { sky:'#7A8B7B', tree:'#6E7A52', race:'#C8A96E', fg:'#A8895A' }   // Vincennes / trot = sable
-  : { sky:'#7A8B7B', tree:'#2F6B26', race:'#4D8A2B', fg:'#2E5413' };  // herbe
+  ? { sky:'#7A8B7B', tree:'#6E7A52', race:'#C8A96E', race2:'#BB9A5C', fg:'#A8895A', fg2:'#977A4D' } // sable (trot)
+  : { sky:'#7A8B7B', tree:'#2F6B26', race:'#4D8A2B', race2:'#3A7A1A', fg:'#2E5413', fg2:'#24450F' };// herbe
 
 // drawBg : la scène DÉFILANTE complète (réf. Starters Orders Touch). Tout le décor
 // glisse de droite à gauche selon scrollX, à la même vitesse (aucun parallaxe).
@@ -618,15 +636,19 @@ function drawBg() {
   drawTreeline(H * SKY_BOT);
   drawGrandstand(H * SKY_BOT);
 
-  // 2. ZONE DE COURSE [0.18..0.75] : herbe/sable de piste qui défile
+  // 2. ZONE DE COURSE [0.18..0.75] : herbe/sable, bandes de tonte 2 tons + bruit
   ctx.fillStyle = COL.race; ctx.fillRect(0, H * SKY_BOT, W, H * (RAIL_L - SKY_BOT));
-  drawGrassStripes(H * SKY_BOT, H * RAIL_L, COL.race);
+  drawGrassStripes(H * SKY_BOT, H * RAIL_L, COL.race, COL.race2);
 
-  // 3. HERBE PREMIER PLAN [0.75..1.0] : vert foncé / sable, défile aussi
+  // 3. HERBE PREMIER PLAN [0.75..1.0] : mêmes bandes mais plus foncées
   ctx.fillStyle = COL.fg; ctx.fillRect(0, H * RAIL_L, W, H * (1 - RAIL_L));
-  drawGrassStripes(H * RAIL_L, H, COL.fg);
+  drawGrassStripes(H * RAIL_L, H, COL.fg, COL.fg2);
+  // ombre de séparation piste / premier plan
+  const sep = ctx.createLinearGradient(0, H * RAIL_L, 0, H * RAIL_L + 16);
+  sep.addColorStop(0, 'rgba(0,0,0,0.30)'); sep.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = sep; ctx.fillRect(0, H * RAIL_L, W, 16);
 
-  // RAILS : ligne blanche #EAEAEA + poteaux verticaux tous les 120px (défilent)
+  // RAILS : barre blanche épaisse + ombre portée + poteaux 120px (défilent)
   drawRail(H * RAIL_U);
   drawRail(H * RAIL_L);
 }
@@ -653,48 +675,69 @@ function drawTreeline(baseY) {
   ctx.fillRect(0, baseY - 2, W, 5);                    // base pleine (pas de trous)
 }
 
-// Herbe/sable défilant : bandes de tonte claires + fines rayures de mouvement.
-function drawGrassStripes(yTop, yBot, base) {
-  const band = 46, period = band * 2;
-  const shift = ((scrollX % period) + period) % period;
-  ctx.fillStyle = shade(base, 12);
-  for (let x = -shift - period; x < W + period; x += period) ctx.fillRect(x, yTop, band, yBot - yTop);
-  ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1;
-  const fs = ((scrollX % 16) + 16) % 16;
-  for (let x = -fs; x <= W; x += 16) { ctx.beginPath(); ctx.moveTo(x, yTop); ctx.lineTo(x, yBot); ctx.stroke(); }
+// Bruit granuleux de piste : tuile 80×80 déterministe construite 1× (CanvasPattern).
+let _noisePat = null;
+function noisePattern() {
+  if (_noisePat) return _noisePat;
+  const t = document.createElement('canvas'); t.width = 80; t.height = 80;
+  const tc = t.getContext('2d');
+  for (let i = 0; i < 1500; i++) {
+    const x = (i * 73) % 80, y = (i * 137) % 80, v = (i * 911) % 100;   // déterministe
+    tc.fillStyle = v < 55 ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.045)';
+    tc.fillRect(x, y, 1, 1);
+  }
+  _noisePat = ctx.createPattern(t, 'repeat');
+  return _noisePat;
 }
 
-// Tribune : apparaît en approche d'arrivée (progress > 0.85) et entre par la droite.
+// Herbe/sable défilant : bandes de tonte alternées (2 tons, 40px) + bruit granuleux.
+function drawGrassStripes(yTop, yBot, base, alt) {
+  const band = 40, period = band * 2;
+  const shift = ((scrollX % period) + period) % period;
+  ctx.fillStyle = alt;                                  // 2e ton (1er ton = fond déjà peint)
+  for (let x = -shift - period; x < W + period; x += period) ctx.fillRect(x, yTop, band, yBot - yTop);
+  ctx.save();                                           // bruit qui défile avec scrollX
+  ctx.translate(-(((scrollX % 80) + 80) % 80), 0);
+  ctx.fillStyle = noisePattern();
+  ctx.fillRect(0, yTop, W + 80, yBot - yTop);
+  ctx.restore();
+}
+
+// Tribune (BONUS) : apparaît à progress > 0.85, entre par la droite et DÉFILE avec le
+// décor (vitesse = scrollX, ancrée au monde via _standAnchor). Large → couvre l'arrivée.
 function drawGrandstand(horizonY) {
-  if (progress < 0.85) return;
-  const k = Math.min(1, (progress - 0.85) / 0.15);
-  const gw = W * 0.52, gx = W - k * (W * 0.55);        // glisse depuis le bord droit
-  const roofY = horizonY - H * 0.11, bodyY = roofY + H * 0.05, botY = horizonY;
+  if (progress < 0.85 || _standAnchor === null) return;
+  const gw = W * 1.3, gx = W - (scrollX - _standAnchor);   // 1:1 avec scrollX → même vitesse
+  if (gx > W) return;                                       // pas encore entrée
+  const roofY = horizonY - H * 0.12, bodyY = roofY + H * 0.045, botY = horizonY;
   ctx.save();
-  ctx.fillStyle = '#9498A0';                            // corps (gradins)
-  ctx.fillRect(gx, bodyY, gw, botY - bodyY);
-  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#9498A0'; ctx.fillRect(gx, bodyY, gw, botY - bodyY);   // corps gradins
+  ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 1;                // marches
   for (let r = 1; r < 4; r++) { const ly = bodyY + (botY - bodyY) * r / 4; ctx.beginPath(); ctx.moveTo(gx, ly); ctx.lineTo(gx + gw, ly); ctx.stroke(); }
-  ctx.fillStyle = '#6F737B';                            // toit
-  ctx.beginPath();
-  ctx.moveTo(gx - 8, bodyY); ctx.lineTo(gx + gw * 0.25, roofY); ctx.lineTo(gx + gw, bodyY - H*0.012); ctx.lineTo(gx + gw, bodyY); ctx.closePath(); ctx.fill();
-  ctx.globalAlpha = 0.5;                                // foule
-  const crowd = ['#C44','#46C','#CC4','#4B8','#EEE','#C8A'];
-  for (let i = 0; i < 80; i++) {
-    const s = i * 41.3;
-    const px = gx + 6 + (s % (gw - 10)), py = bodyY + 3 + (s % (botY - bodyY - 5));
-    ctx.fillStyle = crowd[i % crowd.length]; ctx.fillRect(px, py, 2, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';                                     // piliers
+  for (let x = gx; x < gx + gw; x += 60) ctx.fillRect(x, bodyY, 3, botY - bodyY);
+  ctx.fillStyle = '#6F737B'; ctx.fillRect(gx, roofY, gw, bodyY - roofY + 2);   // toit
+  ctx.fillStyle = '#5C6068'; ctx.fillRect(gx, roofY, gw, 4);
+  const crowd = ['#C44','#46C','#CC4','#4B8','#EEE','#C8A','#E91','#9C4']; // foule stylisée
+  ctx.globalAlpha = 0.7;
+  for (let i = 0; i < 240; i++) {
+    const cxp = gx + ((i * 53) % gw), cyp = bodyY + 2 + ((i * 29) % Math.max(4, botY - bodyY - 4));
+    ctx.fillStyle = crowd[i % crowd.length]; ctx.fillRect(cxp, cyp, 2, 2);
   }
   ctx.restore();
 }
 
-// Rail blanc + poteaux verticaux tous les 120px qui DÉFILENT droite → gauche.
+// Rail : poteaux (20px, sommet arrondi) tous les 120px qui défilent + barre blanche
+// épaisse (8px) avec ombre portée. Strictement horizontal.
 function drawRail(y) {
-  ctx.strokeStyle = '#EAEAEA'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
   const tile = 120, off = ((scrollX % tile) + tile) % tile;
-  ctx.lineWidth = 2;
-  for (let x = -off; x <= W; x += tile) { ctx.beginPath(); ctx.moveTo(x, y - 9); ctx.lineTo(x, y + 2); ctx.stroke(); }
+  ctx.fillStyle = '#D8D8D8';                            // poteaux (derrière la barre)
+  for (let x = -off; x <= W + tile; x += tile) {
+    ctx.beginPath(); ctx.roundRect(x - 2, y - 20, 4, 22, [2, 2, 0, 0]); ctx.fill();
+  }
+  ctx.fillStyle = 'rgba(0,0,0,0.18)'; ctx.fillRect(0, y + 4, W, 3);      // ombre portée
+  ctx.fillStyle = '#F2F2F2'; ctx.fillRect(0, y - 4, W, 8);               // barre blanche 8px
+  ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(0, y - 4, W, 2);// liseré clair
 }
 
 // Ligne d'arrivée : poteau + damier vertical qui DÉFILE depuis la droite dans les
@@ -755,6 +798,7 @@ function updateDust() {
 // ── ÉTAT COURSE ───────────────────────────────────────────────────────────────
 let progress = 0, gameSpeed = 1, raceRunning = false, raceEnded = false;
 let lastTime = 0, frameCount = 0, scrollX = 0, _boost = 0;  // scrollX = défilement du décor (px)
+let STATIC_FRAME = false, _standAnchor = null;              // rendu figé ?frame ; ancre tribune (scrollX)
 const BASE_SCROLL = 430;                                     // vitesse de défilement de base (px/s)
 
 const PHASES = [
@@ -820,6 +864,7 @@ function gameLoop(ts) {
     progress = Math.min(1, progress + dp);
     frameCount += dt * 14 * gameSpeed;                 // cadence galop inchangée
     scrollX  += dt * BASE_SCROLL * gameSpeed * phaseMul;  // décor défile droite → gauche
+    if (progress > 0.85 && _standAnchor === null) _standAnchor = scrollX;  // tribune entre par la droite
 
     document.getElementById('prog-fill').style.width = (progress * 100).toFixed(1) + '%';
     maybeDramaComment();
@@ -917,17 +962,24 @@ function renderFrame() {
   if (progress > 0.86) { const fx = X_LEADER * W + (1 - progress) * 5 * W; if (fx < W + 40) drawFinishLine(fx); }
   updateDust();
 
-  // Ordre de dessin = profondeur (précalculé, LANES constant)
-  const sorted = DRAW_ORDER;
+  // CHANTIER 2 — mouvement vertical : chaque cheval lerp (0.02) vers sa lane cible.
+  // CHANTIER 3 — z-order DYNAMIQUE : tri par Y RÉEL (`r._y`) recalculé chaque frame.
+  const order = [...RUNNERS].sort((a, b) => runnerS(b, progress) - runnerS(a, progress));
+  const rankOf = new Map(); order.forEach((rr, k) => rankOf.set(rr, k));
+  RUNNERS.forEach((r, i) => {
+    const tgt = targetLaneY(r, i, progress, rankOf.get(r));
+    if (STATIC_FRAME) r._y = tgt; else r._y += (tgt - r._y) * 0.02;
+  });
+  const sorted = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => a.r._y - b.r._y);
 
   sorted.forEach(({r,i}) => {
     const xPct = runnerXPct(r, progress);
-    const yPct = LANES[i];
+    const yPct = r._y;                       // Y animé (CHANTIER 2)
 
     const px = xPct * W;
     const py = yPct * H;
 
-    // Perspective 2.5D : lane du fond scale 0.70 .. lane avant 1.0 (réf. SO-Touch)
+    // Perspective 2.5D : depth/scale/fog dérivés du Y RÉEL → cohérent avec le z-order
     const depth = laneDepth(yPct);
     const sc = (0.70 + depth * 0.30) * (r.isPlayer ? 1.06 : 1.0);
 
@@ -1151,12 +1203,15 @@ if (_frame !== null) {
     progress   = Math.max(0, Math.min(1, parseFloat(_frame) || 0));
     frameCount = progress * 200;        // pose de galop cohérente
     scrollX    = progress * 6000;       // décor défilant cohérent
+    _standAnchor = 0.85 * 6000;         // tribune ancrée à p=0.85 (cohérent avec scrollX figé)
     let pidx = 0;
     for (let i = PHASES.length - 1; i >= 0; i--) { if (progress >= PHASES[i].pct) { pidx = i; break; } }
     setPhaseUI(pidx);
-    raceRunning = true;                 // halo joueur + motion blur visibles
+    STATIC_FRAME = true;                 // Y figé sur la cible (pas de lerp temporel)
+    raceRunning = true;                 // halo joueur visible
     renderFrame();
     raceRunning = false;
+    STATIC_FRAME = false;
   };
   renderStaticFrame();                  // fond procédural → rien à charger
 }
