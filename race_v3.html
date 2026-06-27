@@ -196,15 +196,21 @@ const RUNNERS = (function () {
 // Cotes (cosmétique HUD classement) : fournie par le jeu (r.odds) sinon dérivée, stable.
 RUNNERS.forEach(r => { if (r.odds == null) r.odds = +(2 + ((r.id * 37) % 200) / 10).toFixed(1); });
 
-// Lanes DANS LA ZONE DE COURSE [RACE_TOP..RACE_BOT]. i=0 → fond (haut, petit),
-// dernier → premier plan (bas, grand). Déterministe → ?frame reproductible.
-const LANE_T = RACE_TOP + 0.025, LANE_B = RACE_BOT - 0.025;
-const LANES = RUNNERS.map((r, i) => {
-  const t = i / (RUNNERS.length - 1);             // 0=fond .. 1=proche
-  const eased = Math.pow(t, 1.05);
-  const jitter = (((i * 67) % 13) - 6) * 0.0008;  // ±~0.005, déterministe
-  return LANE_T + (LANE_B - LANE_T) * eased + jitter;
-});
+// Bande verticale RESSERRÉE (vue latérale pure, PAS de diagonale) : les chevaux se
+// décalent légèrement en Y (largeur de piste / dépassements) mais restent groupés.
+// La profondeur (Y) est attribuée par une PERMUTATION déterministe décorrélée du
+// classement → le peloton ne s'aligne jamais en chenille diagonale. Déterministe.
+const LANE_T = 0.44, LANE_B = 0.66;             // ~0.22 de hauteur (resserré)
+const LANE_SLOT = (() => {                       // post-positions mélangées, stables
+  const order = RUNNERS.map((r, i) => ({ i, key: ((i * 2654435761) >>> 0) % 100000 }));
+  order.sort((a, b) => a.key - b.key);
+  const slot = new Array(RUNNERS.length);
+  order.forEach((o, rank) => { slot[o.i] = RUNNERS.length > 1 ? rank / (RUNNERS.length - 1) : 0.5; });
+  return slot;
+})();
+const LANES = RUNNERS.map((r, i) =>
+  LANE_T + (LANE_B - LANE_T) * LANE_SLOT[i] + (((i * 67) % 13 - 6) * 0.0006)   // micro-jitter
+);
 
 // Ordre de dessin par profondeur — constant (LANES ne change pas) → précalculé 1×.
 const DRAW_ORDER = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => LANES[a.i] - LANES[b.i]);
@@ -245,9 +251,10 @@ function cornerAmt(p) {
   return bell(0.22, 0.09) * 0.9 + bell(0.72, 0.09) * 0.9;
 }
 
-// depth 0 = fond (haut, petit, sombre) .. 1 = proche (bas, grand, clair)
+// depth 0 = fond (haut, petit, sombre) .. 1 = proche (bas, grand, clair).
+// Mappe la BANDE des lanes [LANE_T..LANE_B] sur [0..1] → vrai contraste de taille.
 function laneDepth(yPct) {
-  return (yPct - RACE_TOP) / (RACE_BOT - RACE_TOP);
+  return Math.max(0, Math.min(1, (yPct - LANE_T) / (LANE_B - LANE_T)));
 }
 
 // ── DESSIN CHEVAL ─────────────────────────────────────────────────────────────
@@ -305,6 +312,7 @@ function drawHorse(cx, cy, s, fi, body, silk, cap, trim, isPlayer, motionBlur, f
   ctx.save();
   ctx.translate(cx, cy);
   if (tilt) ctx.rotate(tilt);                  // inclinaison virage (pivot = centre cheval)
+  ctx.scale(-1, 1);                            // BUG1 : sprite dessiné tête-à-gauche → orienté DROITE
 
   // Motion blur horizontal (ghosts décalés vers l'arrière)
   if (motionBlur > 0) {
