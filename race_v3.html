@@ -122,15 +122,23 @@ const ctx = C.getContext('2d');
 const W = C.width, H = C.height;
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
-// MODÈLE STARTERS ORDERS TOUCH : le FOND DÉFILE de droite à gauche (scrollX) et les
-// chevaux restent CENTRÉS horizontalement (bande ~35%-65%). Aucun parallaxe : tout
-// le décor glisse à la même vitesse. Bandes horizontales (proportions de réf.) :
-const SKY_BOT  = 0.18;   // ciel + arbres     [0    .. 0.18]  (18% haut)
-const RAIL_U   = 0.21;   // rail supérieur    (haut de la zone de course)
-const RACE_TOP = 0.28;   // haut des lanes chevaux
-const RACE_BOT = 0.72;   // bas des lanes chevaux
-const RAIL_L   = 0.75;   // rail inférieur    (limite zone course / premier plan)
-//                       herbe premier plan 0.75 .. 1.00 (25% bas)
+// MODÈLE STARTERS ORDERS TOUCH + FOND PHOTO (WebP Midjourney) : le décor occupe le
+// haut [0..TRACK_TOP] et défile en PARALLAXE (BG_CONFIG.parallaxFactor) ; la PISTE
+// procédurale (herbe/sable + rails) est dessous et défile à 1× (scrollX). Chevaux
+// centrés. Bandes (px / fractions de H=380) sous la ligne de séparation :
+const TRACK_TOP = 214;   // px : haut de la piste = ligne de séparation sous le fond WebP
+const RAIL_U   = 0.58;   // rail intérieur (haut piste, ~220px)
+const RACE_TOP = 0.655;  // haut des lanes chevaux (~249px)
+const RACE_BOT = 0.895;  // bas des lanes chevaux (~340px)
+const RAIL_L   = 0.95;   // rail extérieur (bas piste, ~361px) ; premier plan 0.95..1.0
+
+// ── FOND PHOTO WebP (bloc validé Architecte/Tech) ─────────────────────────────
+const BG_CONFIG = {
+  parallaxFactor: 0.3,
+  drawHeight: TRACK_TOP,                             // 214
+  drawWidth: Math.round(TRACK_TOP * (3808 / 1280)),  // ≈637 (ratio source 3808×1280 préservé)
+  separatorColor: '#1A3A10',
+};
 
 // ── CHEVAUX : centrés. Leader calé à X_LEADER, dernier ≈ 38% (écart ∝ classement) ─
 const X_LEADER = 0.60;                  // X écran du cheval de tête
@@ -200,7 +208,7 @@ RUNNERS.forEach(r => { if (r.odds == null) r.odds = +(2 + ((r.id * 37) % 200) / 
 // décalent légèrement en Y (largeur de piste / dépassements) mais restent groupés.
 // La profondeur (Y) est attribuée par une PERMUTATION déterministe décorrélée du
 // classement → le peloton ne s'aligne jamais en chenille diagonale. Déterministe.
-const LANE_T = 0.44, LANE_B = 0.66;             // ~0.22 de hauteur (resserré)
+const LANE_T = 0.66, LANE_B = 0.89;             // lanes DANS la piste (sous TRACK_TOP)
 const LANE_SLOT = (() => {                       // post-positions mélangées, stables
   const order = RUNNERS.map((r, i) => ({ i, key: ((i * 2654435761) >>> 0) % 100000 }));
   order.sort((a, b) => a.key - b.key);
@@ -613,7 +621,18 @@ function pickDiscipline() {
 }
 const DISCIPLINE = pickDiscipline();
 const IS_SAND = DISCIPLINE === 'trot';       // Vincennes = sable
-const bgReady = true;                         // compat init (plus d'image à charger)
+
+// SWITCH HIPPODROME → fond photo WebP Midjourney.
+const BG_SRC = DISCIPLINE === 'plat'     ? 'bg_longchamp.png.webp'
+             : DISCIPLINE === 'obstacle' ? 'bg_auteuil.png.webp'
+             : DISCIPLINE === 'trot'     ? 'bg_vincennes.png.webp'   // attelé / monté
+             :                             'bg_chantilly.png.webp';  // défaut
+let bgReady = false;
+let __afterBg = null;                          // re-render de l'état figé une fois l'image prête
+const bgImage = new Image();
+bgImage.onload  = () => { bgReady = true; window.__BG_LOADED = true; if (typeof __afterBg === 'function') __afterBg(); };
+bgImage.onerror = () => { window.__BG_ERR = bgImage.src; };           // piste procédurale dessine quand même
+bgImage.src = BG_SRC;
 
 // Distance de course (HUD « distance restante ») : ?distance=1600m
 const RACE_DIST = (() => {
@@ -626,29 +645,33 @@ const COL = IS_SAND
   ? { sky:'#7A8B7B', tree:'#6E7A52', race:'#C8A96E', race2:'#BB9A5C', fg:'#A8895A', fg2:'#977A4D' } // sable (trot)
   : { sky:'#7A8B7B', tree:'#2F6B26', race:'#4D8A2B', race2:'#3A7A1A', fg:'#2E5413', fg2:'#24450F' };// herbe
 
-// drawBg : la scène DÉFILANTE complète (réf. Starters Orders Touch). Tout le décor
-// glisse de droite à gauche selon scrollX, à la même vitesse (aucun parallaxe).
+// drawBg : fond photo WebP (haut, parallaxe) + PISTE procédurale (bas, scrollX 1×).
+// PAS de clearRect ici — renderFrame() gère le clear.
 function drawBg() {
-  // 1. CIEL [0..0.18] : gris-bleu STATIQUE + nuages statiques
-  ctx.fillStyle = COL.sky; ctx.fillRect(0, 0, W, H * SKY_BOT);
-  drawClouds();
-  // arbres à l'horizon (DÉFILENT) + tribune en approche d'arrivée (progress > 0.85)
-  drawTreeline(H * SKY_BOT);
-  drawGrandstand(H * SKY_BOT);
+  // 1. FOND PHOTO [0..TRACK_TOP] : tuiles répétées qui défilent en parallaxe (0.3×).
+  if (bgReady) {
+    let currentX = -(((scrollX * BG_CONFIG.parallaxFactor) % BG_CONFIG.drawWidth + BG_CONFIG.drawWidth) % BG_CONFIG.drawWidth);
+    while (currentX < W) {
+      ctx.drawImage(bgImage, currentX, 0, BG_CONFIG.drawWidth, BG_CONFIG.drawHeight);
+      currentX += BG_CONFIG.drawWidth;
+    }
+    ctx.beginPath();                                   // ligne de séparation fond / piste
+    ctx.moveTo(0, BG_CONFIG.drawHeight); ctx.lineTo(W, BG_CONFIG.drawHeight);
+    ctx.strokeStyle = BG_CONFIG.separatorColor; ctx.lineWidth = 1; ctx.stroke();
+  }
 
-  // 2. ZONE DE COURSE [0.18..0.75] : herbe/sable, bandes de tonte 2 tons + bruit
-  ctx.fillStyle = COL.race; ctx.fillRect(0, H * SKY_BOT, W, H * (RAIL_L - SKY_BOT));
-  drawGrassStripes(H * SKY_BOT, H * RAIL_L, COL.race, COL.race2);
+  // 2. PISTE [TRACK_TOP..H] : herbe/sable, bandes de tonte 2 tons défilantes + bruit.
+  ctx.fillStyle = COL.race; ctx.fillRect(0, TRACK_TOP, W, H * RAIL_L - TRACK_TOP);
+  drawGrassStripes(TRACK_TOP, H * RAIL_L, COL.race, COL.race2);
 
-  // 3. HERBE PREMIER PLAN [0.75..1.0] : mêmes bandes mais plus foncées
+  // 3. PREMIER PLAN [RAIL_L..H] : mêmes bandes plus foncées + ombre de séparation.
   ctx.fillStyle = COL.fg; ctx.fillRect(0, H * RAIL_L, W, H * (1 - RAIL_L));
   drawGrassStripes(H * RAIL_L, H, COL.fg, COL.fg2);
-  // ombre de séparation piste / premier plan
-  const sep = ctx.createLinearGradient(0, H * RAIL_L, 0, H * RAIL_L + 16);
+  const sep = ctx.createLinearGradient(0, H * RAIL_L, 0, H * RAIL_L + 14);
   sep.addColorStop(0, 'rgba(0,0,0,0.30)'); sep.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = sep; ctx.fillRect(0, H * RAIL_L, W, 16);
+  ctx.fillStyle = sep; ctx.fillRect(0, H * RAIL_L, W, 14);
 
-  // RAILS : barre blanche épaisse + ombre portée + poteaux 120px (défilent)
+  // RAILS : barre blanche épaisse + ombre portée + poteaux 120px (défilent).
   drawRail(H * RAIL_U);
   drawRail(H * RAIL_L);
 }
@@ -955,8 +978,9 @@ function drawHudDistance() {
 // Dessine UNE frame (fond + chevaux + effets) sans modifier l'état ni relancer
 // la boucle. Réutilisable pour un rendu figé (?frame=) ou un poster de course.
 function renderFrame() {
+  ctx.clearRect(0, 0, W, H);             // clear (drawBg ne couvre pas tout si image pas prête)
   _leaderS = leaderS(progress);          // cache leader 1×/frame (X + classement)
-  drawBg();                              // décor défilant
+  drawBg();                              // fond WebP (parallaxe) + piste procédurale
   drawStartGates(progress);              // stalles (reculent avec le décor)
   // ligne d'arrivée : défile depuis la droite dans les derniers mètres, passe au poteau à p≈1
   if (progress > 0.86) { const fx = X_LEADER * W + (1 - progress) * 5 * W; if (fx < W + 40) drawFinishLine(fx); }
@@ -1176,6 +1200,7 @@ function startRace() {
 // Init statique
 drawBg();
 updateLive();
+__afterBg = drawBg;                     // redessine le fond WebP dès qu'il est chargé
 
 // ── MODES PREVIEW / CÂBLAGE (lus dans l'URL) ──────────────────────────────────
 const _params = new URLSearchParams(location.search);
@@ -1213,7 +1238,8 @@ if (_frame !== null) {
     raceRunning = false;
     STATIC_FRAME = false;
   };
-  renderStaticFrame();                  // fond procédural → rien à charger
+  __afterBg = renderStaticFrame;        // re-render figé quand le WebP est prêt
+  renderStaticFrame();
 }
 
 // Vitesse initiale (le jeu passe ?speed=4 pour une course brève ~20s).
