@@ -636,6 +636,12 @@ const COL = IS_SAND
   ? { sky:'#7A8B7B', tree:'#6E7A52', race:'#C8A96E', race2:'#BB9A5C', fg:'#A8895A', fg2:'#977A4D' } // sable (trot)
   : { sky:'#7A8B7B', tree:'#2F6B26', race:'#4D8A2B', race2:'#3A7A1A', fg:'#2E5413', fg2:'#24450F' };// herbe
 
+// Palette poussière par SURFACE. sable : beige visible (count 3) ; herbe : mottes
+// brunes + 1 brin vert (count 2). Pilote couleur/densité/durée/élévation/grossissement.
+const DUST = IS_SAND
+  ? { colors:['#D8C193','#C8A96E','#BB9A5C'], count:3, life:0.86, rise:1.2, grow:1.05 }
+  : { colors:['#5A4A2E','#6B5836','#3A7A1A'], count:2, life:0.82, rise:0.8, grow:1.03 };
+
 // drawBg : fond photo WebP (haut, parallaxe) + PISTE procédurale (bas, scrollX 1×).
 // PAS de clearRect ici — renderFrame() gère le clear.
 function drawBg() {
@@ -787,16 +793,19 @@ function drawStartGates(p) {
 // ── PARTICULES DE POUSSIÈRE ──────────────────────────────────────────────────
 const dustParticles = [];
 const MAX_DUST = 70;                 // garde-fou perf 60fps mobile (course rapide / gros peloton)
-function spawnDust(x, y, color) {
-  if (dustParticles.length >= MAX_DUST) return;   // cap : empêche l'explosion du tableau
-  for (let i = 0; i < 2; i++) {
+// Émission : couleur/densité selon DUST (surface), taille ∝ scale 2.5D, vitesse ∝
+// intensity (vitesse de course + virage). Particules projetées vers l'ARRIÈRE.
+function spawnDust(x, y, scale, intensity) {
+  if (dustParticles.length >= MAX_DUST) return;        // cap conservé
+  for (let i = 0; i < DUST.count; i++) {
     dustParticles.push({
-      x, y: y + (Math.random() - 0.5) * 6,
-      vx: -(1 + Math.random() * 2),
-      vy: -(0.5 + Math.random()),
-      r: 1.5 + Math.random() * 2.5,
-      alpha: 0.4 + Math.random() * 0.3,
-      color,
+      x: x + (Math.random()-0.5) * 4 * scale,
+      y: y + (Math.random()-0.5) * 4 * scale,
+      vx: -(0.8 + Math.random() * 2.2) * (0.6 + intensity),   // vers l'ARRIÈRE
+      vy: -(DUST.rise * (0.4 + Math.random())),
+      r: (1.2 + Math.random() * 2.0) * scale,                 // taille suit le scale 2.5D
+      alpha: (0.30 + Math.random() * 0.25) * (0.5 + intensity),
+      color: DUST.colors[(Math.random() * DUST.colors.length) | 0],
     });
   }
 }
@@ -804,10 +813,13 @@ function updateDust() {
   for (let i = dustParticles.length - 1; i >= 0; i--) {
     const d = dustParticles[i];
     d.x += d.vx; d.y += d.vy; d.vy += 0.05;
-    d.r  *= 1.04; d.alpha *= 0.88;
+    d.r *= DUST.grow; d.alpha *= DUST.life;
     if (d.alpha < 0.02) { dustParticles.splice(i, 1); continue; }
-    ctx.fillStyle = `rgba(180,140,60,${d.alpha})`;
+    ctx.save();
+    ctx.globalAlpha = d.alpha;
+    ctx.fillStyle = d.color;                              // hex, plus de marron codé en dur
     ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -1005,6 +1017,14 @@ function renderFrame() {
   // ligne d'arrivée : défile depuis la droite dans les derniers mètres, passe au poteau à p≈1
   if (progress > 0.86) { const fx = X_LEADER * W + (1 - progress) * 5 * W; if (fx < W + 40) drawFinishLine(fx); }
   updateDust();
+  // Voile de peloton (subtil) : léger halo de poussière sur la bande de course.
+  if (raceRunning && dustParticles.length > 12) {
+    ctx.save();
+    ctx.globalAlpha = IS_SAND ? 0.05 : 0.03;
+    ctx.fillStyle = DUST.colors[0];
+    ctx.fillRect(0, LANE_CENTER*H - 6, W, 30);
+    ctx.restore();
+  }
 
   // CHANTIER 2 — mouvement vertical : chaque cheval lerp (0.02) vers sa lane cible.
   // CHANTIER 3 — z-order DYNAMIQUE : tri par Y RÉEL (`r._y`) recalculé chaque frame.
@@ -1040,8 +1060,9 @@ function renderFrame() {
       ctx.beginPath(); ctx.ellipse(px, py - 2*sS, 58*sS, 8*sS, 0, 0, Math.PI*2); ctx.fill();
       ctx.restore();
 
-      if (raceRunning && depth > 0.45 && Math.random() < 0.15 * gameSpeed * (progress < 0.04 ? 4 : 1)) {
-        spawnDust(px - 8*sS, py - 3*sS, r.body);                      // poussière sous les sabots
+      const dustIntensity = Math.min(1, (gameSpeed * 0.5) + bendAmount * 0.5);   // vitesse + virage
+      if (raceRunning && depth > 0.45 && Math.random() < (0.12 + 0.10*dustIntensity) * gameSpeed * (progress < 0.04 ? 4 : 1)) {
+        spawnDust(px - 14*sS, py - 2*sS, sS, dustIntensity);          // sabots arrière, scale 2.5D
       }
 
       drawHorseFogged(px, py, sS, r.frame, r.body, r.silk, fog);      // cheval + fog source-atop APRÈS
@@ -1075,8 +1096,9 @@ function renderFrame() {
       ctx.beginPath(); ctx.ellipse(px - 3*sc, py + 4*sc, 22*sc, 5*sc, 0, 0, Math.PI*2); ctx.fill();
       ctx.restore();
 
-      if (raceRunning && depth > 0.45 && Math.random() < 0.15 * gameSpeed * (progress < 0.04 ? 4 : 1)) {
-        spawnDust(px - 10*sc, py + 14*sc, r.body);
+      const dustIntensity = Math.min(1, (gameSpeed * 0.5) + bendAmount * 0.5);   // vitesse + virage
+      if (raceRunning && depth > 0.45 && Math.random() < (0.12 + 0.10*dustIntensity) * gameSpeed * (progress < 0.04 ? 4 : 1)) {
+        spawnDust(px - 12*sc, py + 12*sc, sc, dustIntensity);
       }
 
       if (spriteManager.isLoaded) {
