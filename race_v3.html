@@ -323,6 +323,83 @@ function drawLeg(x, y, angle, len, col, w, s) {
   ctx.fill();
 }
 
+// ── SpriteManager : infra de sprites PNG (DORMANTE tant que les PNG sont absents) ──
+// Si horse_base.png / jockey_base.png n'existent pas → isLoaded reste false et le rendu
+// VECTORIEL (drawHorse, ci-dessous) reste le fallback par défaut. (Validé Architecte/Tech.)
+class SpriteManager {
+  constructor() {
+    this.horseSheet = new Image();
+    this.jockeyBaseSheet = new Image();
+    this.isLoaded = false;
+    this.jockeyCache = {};
+    this.frameWidth = 200;
+    this.frameHeight = 150;
+  }
+
+  init(horseSrc, jockeySrc) {
+    return new Promise((resolve) => {
+      let loadedCount = 0;
+      const checkLoad = () => {
+        loadedCount++;
+        if (loadedCount === 2) {
+          this.isLoaded = true;
+          resolve();
+        }
+      };
+      this.horseSheet.onload = checkLoad;
+      this.jockeyBaseSheet.onload = checkLoad;
+      this.horseSheet.onerror = () => { this.isLoaded = false; };
+      this.jockeyBaseSheet.onerror = () => { this.isLoaded = false; };
+      this.horseSheet.src = horseSrc;
+      this.jockeyBaseSheet.src = jockeySrc;
+    });
+  }
+
+  generateJockeyCache(horseId, hexColor) {
+    const c = document.createElement('canvas');
+    c.width = this.jockeyBaseSheet.width;
+    c.height = this.jockeyBaseSheet.height;
+    const o = c.getContext('2d');
+    o.drawImage(this.jockeyBaseSheet, 0, 0);
+    o.globalCompositeOperation = 'source-atop';
+    o.fillStyle = hexColor;
+    o.fillRect(0, 0, c.width, c.height);
+    this.jockeyCache[horseId] = c;
+  }
+
+  renderSprite(ctx, horseId, frameIndex, targetX, targetY, scale, fogAlpha = 0) {
+    if (!this.isLoaded) return;
+    const sourceX = frameIndex * this.frameWidth;
+    const dWidth = this.frameWidth * scale;
+    const dHeight = this.frameHeight * scale;
+    ctx.save();
+    ctx.translate(targetX, targetY);
+    ctx.scale(-1, 1);
+    const drawX = -dWidth / 2;
+    const drawY = -dHeight / 2;
+    ctx.drawImage(this.horseSheet, sourceX, 0,
+      this.frameWidth, this.frameHeight, drawX, drawY, dWidth, dHeight);
+    const tinted = this.jockeyCache[horseId];
+    if (tinted) {
+      ctx.drawImage(tinted, sourceX, 0,
+        this.frameWidth, this.frameHeight, drawX, drawY, dWidth, dHeight);
+    }
+    if (fogAlpha > 0) {
+      ctx.globalCompositeOperation = 'source-atop';
+      ctx.fillStyle = `rgba(0,0,0,${fogAlpha})`;
+      ctx.fillRect(drawX, drawY, dWidth, dHeight);
+    }
+    ctx.restore();
+  }
+}
+
+// Instanciation globale + tentative de chargement. Les PNG n'existant pas encore, le
+// promise ne se résout jamais (onerror → isLoaded=false) → fallback vectoriel actif.
+// Dès que les sheets seront fournis, les casaques teintées sont mises en cache 1×.
+const spriteManager = new SpriteManager();
+spriteManager.init('horse_base.png', 'jockey_base.png')
+  .then(() => { RUNNERS.forEach(r => spriteManager.generateJockeyCache(r.id, r.silk)); });
+
 function drawHorse(cx, cy, s, fi, body, silk, cap, trim, isPlayer, motionBlur, fog, tilt) {
   const f = FRAMES[fi % 8];
 
@@ -1029,7 +1106,14 @@ function renderFrame() {
 
     // Cheval (fog = voile de profondeur ; tilt = inclinaison virage)
     const fog = (1 - depth) * 0.32;
-    drawHorse(px, py, sc, Math.floor(frameCount + i * 1.7), r.body, r.silk, r.cap, r.trim, r.isPlayer, blur, fog, tilt);
+    if (spriteManager.isLoaded) {
+      // Rendu SPRITE (actif seulement si horse_base.png + jockey_base.png chargés)
+      const frameIndex = Math.floor(frameCount + i * 1.7) % 8;
+      spriteManager.renderSprite(ctx, r.id, frameIndex, px, py, sc, fog);
+    } else {
+      // Fallback VECTORIEL par défaut (rendu inchangé tant que les PNG sont absents)
+      drawHorse(px, py, sc, Math.floor(frameCount + i * 1.7), r.body, r.silk, r.cap, r.trim, r.isPlayer, blur, fog, tilt);
+    }
 
     // Numéro dossard (visible au premier plan)
     if (depth > 0.4) {
