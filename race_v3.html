@@ -760,20 +760,20 @@ function drawRail(y) {
   ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(0, y - 4, W, 2);// liseré clair
 }
 
-// Ligne d'arrivée : poteau + damier vertical qui DÉFILE depuis la droite dans les
-// derniers mètres (réf. SO-Touch) et passe les chevaux centrés au poteau (p≈1).
-function drawFinishLine(fx) {
-  const top = RAIL_U * H, bot = RAIL_L * H, sq = 10;
-  for (let y = top, i = 0; y < bot; y += sq, i++) {
-    ctx.fillStyle = i % 2 ? '#fff' : '#111';
-    ctx.fillRect(fx - 4, y, 8, sq);
-  }
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(fx, top - H * 0.07); ctx.lineTo(fx, bot); ctx.stroke();
-  ctx.fillStyle = '#C9A84C';                        // fanion
-  ctx.beginPath();
-  ctx.moveTo(fx, top - H * 0.07); ctx.lineTo(fx + 16, top - H * 0.055); ctx.lineTo(fx, top - H * 0.04);
-  ctx.closePath(); ctx.fill();
+// Poteau d'arrivée : repère FIXE en coordonnées écran (x = W*0.7). Mât blanc du rail
+// haut au rail bas, disque rouge au sommet, texte « 0m » au-dessus.
+function drawFinishPost() {
+  const fx = W * 0.7, top = RAIL_U * H, bot = RAIL_L * H;
+  ctx.save();
+  ctx.fillStyle = '#fff';                           // mât blanc vertical (~4px)
+  ctx.fillRect(fx - 2, top, 4, bot - top);
+  ctx.fillStyle = '#E83A2A';                        // disque rouge au sommet
+  ctx.beginPath(); ctx.arc(fx, top, 12, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#fff';                           // texte « 0m » au-dessus du disque
+  ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  ctx.fillText('0m', fx, top - 16);
+  ctx.restore();
 }
 
 // Stalles de départ : calées au centre au départ, elles reculent avec le décor.
@@ -1055,8 +1055,8 @@ function renderFrame() {
   _leaderS = leaderS(progress);          // cache leader 1×/frame (X + classement)
   drawBg();                              // fond WebP (parallaxe) + piste procédurale
   drawStartGates(progress);              // stalles (reculent avec le décor)
-  // ligne d'arrivée : ANCRÉE à un X écran FIXE (tiers droit) pendant toute la course.
-  drawFinishLine(W * 0.7);
+  // poteau d'arrivée : visible uniquement dans les tout derniers mètres (progress > 0.90).
+  if (progress > 0.90) drawFinishPost();
   updateDust();
   // Voile de peloton (subtil) : léger halo de poussière sur la bande de course.
   if (raceRunning && dustParticles.length > 12) {
