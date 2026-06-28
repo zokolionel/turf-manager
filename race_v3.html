@@ -227,12 +227,33 @@ const LANES = RUNNERS.map((r, i) =>
 // Le z-order n'utilise PLUS de lane fixe — il est trié par `_y` chaque frame (CHANTIER 3).
 const LANE_CENTER = (LANE_T + LANE_B) / 2;
 const LANE_H = (LANE_B - LANE_T) / Math.max(1, RUNNERS.length - 1);
+
+// Profils tactiques (déclarés AVANT l'init car appelés par celle-ci — pas de TDZ).
+const TACTIC_PROFILES = ['meneur', 'suiveur_corde', 'pistard', 'place', 'outsider'];
+// Distribution pondérée DÉTERMINISTE (hash de l'id → ?frame reproductible, pas de random).
+function assignProfile(r) {
+  const w = [15, 20, 20, 35, 10];
+  let h = ((r.id * 2654435761) >>> 0) % 100;
+  for (let k = 0; k < TACTIC_PROFILES.length; k++) { if (h < w[k]) return TACTIC_PROFILES[k]; h -= w[k]; }
+  return 'place';
+}
+// Lane Y par défaut selon le profil : corde (haut) / milieu / extérieur (bas).
+function getDefaultY(profile) {
+  if (profile === 'meneur' || profile === 'suiveur_corde') return LANE_T + 0.02;   // corde
+  if (profile === 'outsider')                              return LANE_B - 0.02;   // extérieur
+  return (LANE_T + LANE_B) / 2;                                                     // milieu (placé/pistard)
+}
+
 // _y (lane animée) + frame de galop sprite (désync : offset aléatoire 0..nframes-1).
 RUNNERS.forEach((r, i) => {
   r._y = LANES[i];
-  r.targetY = r._y;        // Y cible (ratio) — lane de base, alimentée par targetLaneY
-  r.laneOffset = 0;        // décalage dynamique de séparation (IA peloton)
-  r.cooldown = 0;          // anti-zig-zag (en frames)
+  r.tacticalProfile = assignProfile(r);            // meneur/suiveur_corde/pistard/place/outsider
+  r.stamina = 1.0;                                 // usée par les phases d'effort
+  r.targetRatioY = getDefaultY(r.tacticalProfile); // corde / milieu / extérieur
+  r.isEnferme = false;
+  r.laneChangeCooldown = 0;
+  r.tacticalMod = 1.0;                             // modificateur de phase courant
+  r.tacticalDX = 0;                               // biais X cosmétique (adaptation, voir Étape 0)
   r.frame = (typeof HORSE_META !== 'undefined') ? Math.floor(Math.random() * HORSE_META.nframes) : 0;
   r.frameTimer = 0;
 });
@@ -294,27 +315,54 @@ function targetLaneY(r, i, p, rank) {
   return Math.max(LANE_T, Math.min(LANE_B, y));
 }
 
-// IA PELOTON — séparation Y anti-fusion. Quand 2 chevaux se chevauchent (proches en X
-// ET dans le même couloir Y), le cheval cherche un couloir libre (dessus puis dessous),
-// avec cooldown anti-zig-zag, puis revient doucement vers sa lane. AUCUN frein sur X.
-// O(n²) borné (≤8 partants). Appelée par renderFrame entre la lane de base et le tassement.
-function resolvePelotonY() {
-  for (const r of RUNNERS) r._x = runnerXPct(r, progress);      // X courant (proximité)
+// ── IA TACTIQUE PELOTON (adaptée — voir Étape 0) ─────────────────────────────
+// Moteur .pos-DÉTERMINISTE : la position X (runnerXPct) dérive de runnerS(.pos) et
+// l'ordre d'arrivée = .pos (lu par résultat/photo-finish/HUD/mini-map). PAS de speedX
+// par cheval, PAS de stats, PAS de MIN/MAX_SPEED. Adaptation : profils + lanes Y +
+// stamina + déboîtement Y (libres, sans toucher au résultat) ; la « vitesse tactique »
+// s'exprime par un BIAIS X COSMÉTIQUE borné et fondu avant l'arrivée (display only).
+// (TACTIC_PROFILES / assignProfile / getDefaultY sont définis plus haut, avant l'init.)
+// Phases tactiques : modificateur de vitesse par profil/phase → biais X cosmétique +
+// usure de stamina. (speedX inexistant ici → biais display borné, fondu avant l'arrivée.)
+function updateTacticalPhases(p) {
+  const fade = 1 - Math.max(0, Math.min(1, (p - 0.90) / 0.10));   // 1 jusqu'à 0.90 → 0 à l'arrivée
+  for (const r of RUNNERS) {
+    const prof = r.tacticalProfile; let m = 1.0;
+    if (p < 0.20)      { if (prof === 'meneur') m = 1.10; else if (prof === 'outsider') m = 0.90; }
+    else if (p < 0.45) { m = 1.00; }
+    else if (p < 0.60) { if (prof === 'pistard') m = 1.05; else if (prof === 'meneur') m = 0.95; }
+    else if (p < 0.85) { if (prof === 'suiveur_corde' || prof === 'pistard') m = 1.10; else if (prof === 'outsider') m = 1.05; }
+    else               { if (prof === 'outsider') m = (r.stamina > 0.2 ? 1.20 : 1.00); else if (prof === 'meneur') m = (r.stamina > 0.3 ? 1.05 : 0.95); }
+    r.tacticalMod = m;
+    // speedX clampé dans les bornes (adaptées) → biais X cosmétique ±~0.6 longueur, lissé, fondu.
+    const targetBias = Math.max(-0.02, Math.min(0.02, (m - 1) * 0.08)) * fade;
+    r.tacticalDX += (targetBias - r.tacticalDX) * 0.06;
+    r.stamina = Math.max(0, r.stamina - (m > 1.0 ? 0.002 : 0.001));
+  }
+}
+// Déboîtement Y sur enfermement (un cheval coincé derrière un autre cherche un couloir
+// libre ±0.06) — JAMAIS de frein X — puis lerp de _y vers la lane cible. _y borné.
+// O(n²) borné (≤8 partants).
+function resolvePelotonTactics() {
+  for (const r of RUNNERS) r._x = runnerXPct(r, progress);
+  const free = (A, y) => !RUNNERS.some(B => B !== A && Math.abs(B._x - A._x) < 0.05 && Math.abs(B._y - y) < 0.03);
   for (const A of RUNNERS) {
-    if (A.cooldown > 0) A.cooldown--;
-    let collision = false;
-    for (const B of RUNNERS) {
-      if (B === A) continue;
-      if (Math.abs(B._x - A._x) < 0.04 && Math.abs(B._y - A._y) < 0.015) { collision = true; break; }
+    if (A.laneChangeCooldown > 0) A.laneChangeCooldown--;
+    A.isEnferme = false;
+    if (progress > 0.20) {
+      for (const B of RUNNERS) {
+        if (B === A) continue;
+        if (B._x > A._x && (B._x - A._x) < 0.05 && Math.abs(B._y - A._y) < 0.03) { A.isEnferme = true; break; }
+      }
     }
-    if (collision && A.cooldown === 0) {
-      if (A._y - 0.02 >= LANE_T)      A.laneOffset = -0.02;     // tenter le couloir du dessus
-      else if (A._y + 0.02 <= LANE_B) A.laneOffset = +0.02;     // sinon celui du dessous
-      // sinon : enfermement visuel, on reste (pas de frein X)
-      A.cooldown = 30;
+    if (A.isEnferme && A.laneChangeCooldown === 0) {
+      const up = A.targetRatioY - 0.06, dn = A.targetRatioY + 0.06;
+      if (up >= LANE_T && free(A, up))      { A.targetRatioY = up; A.laneChangeCooldown = 10; }
+      else if (dn <= LANE_B && free(A, dn)) { A.targetRatioY = dn; A.laneChangeCooldown = 10; }
+      // sinon : reste enfermé (aucun frein X)
     }
-    A.laneOffset *= 0.97;                                       // retour progressif vers la lane
-    A._y = Math.max(LANE_T, Math.min(LANE_B, A.targetY + A.laneOffset));
+    A._y = STATIC_FRAME ? A.targetRatioY : A._y + (A.targetRatioY - A._y) * 0.02;
+    A._y = Math.max(LANE_T, Math.min(LANE_B, A._y));
   }
 }
 
@@ -1099,23 +1147,18 @@ function renderFrame() {
     ctx.restore();
   }
 
-  // CHANTIER 2 — mouvement vertical : chaque cheval lerp (0.02) vers sa lane cible.
-  // CHANTIER 3 — z-order DYNAMIQUE : tri par Y RÉEL (`r._y`) recalculé chaque frame.
-  const order = [...RUNNERS].sort((a, b) => runnerS(b, progress) - runnerS(a, progress));
-  const rankOf = new Map(); order.forEach((rr, k) => rankOf.set(rr, k));
-  // Lane de BASE (targetY) : lerp 0.02 vers la cible (convergence / oscillation / corde).
-  RUNNERS.forEach((r, i) => {
-    const tgt = targetLaneY(r, i, progress, rankOf.get(r));
-    if (STATIC_FRAME) r.targetY = tgt; else r.targetY += (tgt - r.targetY) * 0.02;
-  });
-  // IA peloton : séparation Y anti-fusion (ajuste r._y = clamp(targetY + laneOffset)).
-  resolvePelotonY();
-  // VIRAGE : tassement Y vers le centre (RATIO ∝ bendAmount), appliqué SUR le _y ajusté.
+  // ── IA TACTIQUE PELOTON (ordre Étape 5 ; voir Étape 0 pour l'adaptation) ─────
+  // 1. vitesse X de base = runnerXPct (.pos-déterministe, existant, inchangé).
+  updateTacticalPhases(progress);   // 2. modificateurs de phase par profil + stamina + biais X cosmétique
+  resolvePelotonTactics();          // 3. déboîtement Y sur enfermement + lerp _y vers la lane de profil
+  // 4. VIRAGE : tassement Y vers le centre (RATIO ∝ bendAmount), appliqué SUR le _y ajusté.
   RUNNERS.forEach((r) => { r._cy = r._y + (LANE_CENTER - r._y) * bendAmount * 0.3; });
+  // 5. tri Z-order dynamique par Y réel.
   const sorted = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => a.r._cy - b.r._cy);
 
   sorted.forEach(({r,i}) => {
-    const xPct = runnerXPct(r, progress);
+    // X de base (.pos-déterministe) + biais tactique COSMÉTIQUE borné (display only).
+    const xPct = Math.max(X_MIN, Math.min(X_MAX, runnerXPct(r, progress) + (r.tacticalDX || 0)));
     const yPct = r._cy;                      // Y animé (CHANTIER 2) + tassement virage
 
     const px = xPct * W;
