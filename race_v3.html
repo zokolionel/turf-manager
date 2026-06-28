@@ -316,10 +316,13 @@ function drawLeg(x, y, angle, len, col, w, s) {
   const ey = ky + Math.cos(a2) * len * 0.55;
   ctx.lineWidth = w * s * 0.75;
   ctx.beginPath(); ctx.moveTo(kx, ky); ctx.lineTo(ex, ey); ctx.stroke();
-  // Sabot
-  ctx.fillStyle = '#111';
+  // Articulation marquée (boulet / jarret)
+  ctx.fillStyle = col;
+  ctx.beginPath(); ctx.arc(kx, ky, w * s * 0.7, 0, Math.PI*2); ctx.fill();
+  // Sabot (gris sombre)
+  ctx.fillStyle = '#2A2A2A';
   ctx.beginPath();
-  ctx.ellipse(ex, ey, 2.8*s, 1.6*s, a2, 0, Math.PI*2);
+  ctx.ellipse(ex, ey, 2.8*s, 1.7*s, a2, 0, Math.PI*2);
   ctx.fill();
 }
 
@@ -409,18 +412,21 @@ function adjustColorBrightness(hex, percent) {
   return '#' + (((ch(r) << 16) | (ch(g) << 8) | ch(b)) >>> 0).toString(16).padStart(6, '0');
 }
 
-// Cycle galop Muybridge 8 frames : SEULS les angles des membres (fl/fr/rl/rr en degrés)
-// et bodyYOffset (bob vertical) changent par frame. Tronc/tête/jockey restent constants.
+// Cycle galop Muybridge 8 frames. Convention (espace local, tête en -x) : membre AVANT
+// angle<0 = tendu vers l'avant, >0 = replié sous le ventre ; membre ARRIÈRE angle>0 =
+// tendu vers l'arrière (propulsion), <0 = engagé sous le ventre. SEULS changent par
+// frame : angles membres (fl/fr/rl/rr), bob (oscillation verticale), tail (inclinaison
+// queue : haute=valeur basse en propulsion, basse=valeur haute en extension).
 function gallopFrame(fi) {
   switch (fi) {
-    case 0:  return { fl:-35, fr: 15, rl: 25, rr:-25, bob: 5 };   // appui / extension
-    case 1:  return { fl: -5, fr: 45, rl: 55, rr:  5, bob: 0 };
-    case 2:  return { fl: 25, fr: 65, rl: 28, rr: 45, bob:-3 };
-    case 3:  return { fl: 55, fr: 35, rl:  5, rr: 62, bob:-5 };   // extension max
-    case 4:  return { fl: 42, fr:-12, rl:-22, rr: 32, bob:-2 };
-    case 5:  return { fl: 12, fr:-28, rl:-38, rr: 12, bob: 2 };
-    case 6:  return { fl:-18, fr: -8, rl:-18, rr:-28, bob: 8 };   // rassemblé / suspension
-    default: return { fl:-38, fr:  8, rl:  8, rr:-38, bob: 6 };
+    case 0:  return { fl:-48, fr:-38, rl: 52, rr: 60, bob: 5, tail: 0.50 }; // extension maximale
+    case 1:  return { fl: 18, fr: -8, rl: 30, rr: 42, bob: 0, tail: 0.42 }; // réception antérieur droit
+    case 2:  return { fl: 35, fr: 12, rl:  5, rr: 22, bob:-3, tail: 0.32 }; // appui monopodal
+    case 3:  return { fl: 42, fr: 28, rl:-28, rr:-12, bob:-5, tail: 0.18 }; // engagement postérieurs
+    case 4:  return { fl: 20, fr: 30, rl:-30, rr:-20, bob:-2, tail: 0.10 }; // regroupement (sous le ventre)
+    case 5:  return { fl:-12, fr:  8, rl: 36, rr: 22, bob: 2, tail:-0.05 }; // propulsion initiale
+    case 6:  return { fl:-30, fr:-16, rl: -6, rr: 14, bob: 8, tail:-0.12 }; // suspension (aucun appui)
+    default: return { fl:-44, fr:-30, rl: 44, rr: 50, bob: 6, tail: 0.30 }; // retour vers extension
   }
 }
 
@@ -455,28 +461,29 @@ function drawHorse(cx, cy, s, fi, body, silk, cap, trim, isPlayer, motionBlur, f
   ctx.translate(0, pose.bob * s * 0.5);          // bobYOffset : oscillation verticale du corps
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
 
-  // ── 1. MEMBRES DU FOND (côté opposé, ton shadow) ─────────────────────────────
+  // ── 1. MEMBRES DU FOND (côté opposé, ton shadow, articulations marquées) ─────
   drawLeg(-13*s, 3*s, pose.fr, legLen, coat.shadow, 2.3, s);     // antérieur fond
   drawLeg( 13*s, 3*s, pose.rr, legLen, coat.shadow, 2.6, s);     // postérieur fond
 
-  // ── 2. QUEUE (brosse, inclinaison selon frame) ───────────────────────────────
+  // ── 2. QUEUE (brosse fluide, inclinaison selon frame : basse en extension, haute
+  //      en propulsion via pose.tail) ──────────────────────────────────────────
   ctx.save();
-  ctx.translate(20*s, -3*s); ctx.rotate(0.25 + pose.bob * 0.02);
+  ctx.translate(21*s, -4*s); ctx.rotate(pose.tail);
   ctx.fillStyle = adjustColorBrightness(body, -38);
   ctx.beginPath();
   ctx.moveTo(0, -2*s);
-  ctx.quadraticCurveTo(10*s, 6*s, 6*s, 21*s);
+  ctx.quadraticCurveTo(11*s, 7*s, 7*s, 22*s);
   ctx.quadraticCurveTo(3*s, 14*s, -2*s, 4*s);
   ctx.closePath(); ctx.fill();
   ctx.restore();
 
-  // ── 3. TRONC + ENCOLURE (base, morphologie athlétique) ───────────────────────
+  // ── 3. TRONC + ENCOLURE LONGUE (base, ligne du dessus tendue) ────────────────
   ctx.fillStyle = coat.base;
-  ctx.beginPath();                               // encolure (garrot → nuque)
+  ctx.beginPath();                               // encolure longue (garrot → nuque)
   ctx.moveTo(-12*s, -6*s);
-  ctx.quadraticCurveTo(-22*s, -10*s, -27*s, -19*s);
-  ctx.lineTo(-22*s, -22*s);
-  ctx.quadraticCurveTo(-15*s, -14*s, -6*s, -7*s);
+  ctx.quadraticCurveTo(-24*s, -11*s, -30*s, -22*s);
+  ctx.lineTo(-25*s, -25*s);
+  ctx.quadraticCurveTo(-16*s, -15*s, -6*s, -7*s);
   ctx.closePath(); ctx.fill();
   ctx.beginPath(); ctx.ellipse(  0*s,  1*s, 18*s,  9*s, 0, 0, Math.PI*2); ctx.fill();  // barrel
   ctx.beginPath(); ctx.ellipse( 12*s, -2*s, 11*s, 10*s, 0, 0, Math.PI*2); ctx.fill();  // croupe
@@ -484,23 +491,26 @@ function drawHorse(cx, cy, s, fi, body, silk, cap, trim, isPlayer, motionBlur, f
 
   // ── 4. OMBRES MUSCULAIRES (aplats shadow) ────────────────────────────────────
   ctx.fillStyle = coat.shadow;
-  ctx.beginPath(); ctx.ellipse(  2*s, 6*s, 14*s, 4*s, 0, 0, Math.PI*2); ctx.fill();    // flanc/ventre
-  ctx.beginPath(); ctx.ellipse(  8*s, 4*s,  7*s, 6*s, 0, 0, Math.PI*2); ctx.fill();    // cuisse
+  ctx.beginPath(); ctx.ellipse(  2*s, 6*s, 14*s, 4*s, 0, 0, Math.PI*2); ctx.fill();    // flanc sous selle
+  ctx.beginPath(); ctx.ellipse(  8*s, 4*s,  7*s, 6*s, 0, 0, Math.PI*2); ctx.fill();    // pli cuisse
   ctx.beginPath(); ctx.ellipse(-15*s, 3*s,  5*s, 6*s, 0, 0, Math.PI*2); ctx.fill();    // omoplate
 
   // ── 5. LUMIÈRES MUSCULAIRES (aplats highlight) ───────────────────────────────
   ctx.fillStyle = coat.highlight;
-  ctx.beginPath(); ctx.ellipse(13*s, -7*s, 8*s, 4*s, 0, 0, Math.PI*2); ctx.fill();     // croupe (dessus)
+  ctx.beginPath(); ctx.ellipse(13*s, -7*s, 8*s, 4*s, 0, 0, Math.PI*2); ctx.fill();     // haut croupe
   ctx.beginPath(); ctx.ellipse(-3*s, -6*s, 12*s, 3*s, 0, 0, Math.PI*2); ctx.fill();    // dos (sheen)
-  ctx.save(); ctx.translate(-20*s, -16*s); ctx.rotate(-0.7);
-  ctx.beginPath(); ctx.ellipse(0, 0, 7*s, 2*s, 0, 0, Math.PI*2); ctx.fill();           // crête encolure
+  ctx.save(); ctx.translate(-22*s, -18*s); ctx.rotate(-0.72);
+  ctx.beginPath(); ctx.ellipse(0, 0, 8*s, 2*s, 0, 0, Math.PI*2); ctx.fill();           // galbe encolure
   ctx.restore();
 
-  // ── 6. TÊTE + CRINIÈRE (profil affiné, oreilles couchées, naseau marqué) ─────
-  ctx.strokeStyle = adjustColorBrightness(body, -42); ctx.lineWidth = 3*s;             // crinière
-  ctx.beginPath(); ctx.moveTo(-7*s, -8*s); ctx.quadraticCurveTo(-18*s, -15*s, -25*s, -21*s); ctx.stroke();
+  // ── 6. TÊTE + CRINIÈRE EN MÈCHES (profil affiné, oreilles couchées) ──────────
+  ctx.fillStyle = adjustColorBrightness(body, -44);                                    // crinière en mèches
+  for (let m = 0; m < 5; m++) {
+    const t = m / 4, mx = (-8 + (-29 - (-8)) * t) * s, my = (-9 + (-23 - (-9)) * t) * s;
+    ctx.beginPath(); ctx.moveTo(mx, my); ctx.lineTo(mx + 3*s, my - 2*s); ctx.lineTo(mx + 1*s, my + 2*s); ctx.closePath(); ctx.fill();
+  }
   ctx.save();
-  ctx.translate(-27*s, -19*s);
+  ctx.translate(-30*s, -22*s);                   // bout de l'encolure longue
   ctx.fillStyle = coat.base;                     // chanfrein / tête (profil)
   ctx.beginPath();
   ctx.moveTo(2*s, -3*s);
@@ -509,43 +519,54 @@ function drawHorse(cx, cy, s, fi, body, silk, cap, trim, isPlayer, motionBlur, f
   ctx.quadraticCurveTo(-2*s, 8*s, 3*s, 5*s);
   ctx.closePath(); ctx.fill();
   ctx.fillStyle = adjustColorBrightness(body, -30);                                    // naseau marqué
-  ctx.beginPath(); ctx.ellipse(-7*s, 6*s, 1.6*s, 1.2*s, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = coat.shadow;                   // oreilles couchées (vers l'arrière)
-  ctx.beginPath(); ctx.moveTo(2*s,-2*s); ctx.lineTo(8*s,-5*s); ctx.lineTo(4*s,1*s); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(1*s,-1*s); ctx.lineTo(7*s,-2*s); ctx.lineTo(3*s,2*s); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(-7*s, 6*s, 1.7*s, 1.2*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = coat.shadow;                   // oreilles couchées (effort)
+  ctx.beginPath(); ctx.moveTo(2*s,-2*s); ctx.lineTo(9*s,-5*s); ctx.lineTo(4*s,1*s); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(1*s,-1*s); ctx.lineTo(8*s,-2*s); ctx.lineTo(3*s,2*s); ctx.closePath(); ctx.fill();
   ctx.fillStyle = '#0D0D0D';                     // œil
   ctx.beginPath(); ctx.arc(-1*s, 1*s, 1.4*s, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 
-  // ── 7. MEMBRES AVANT (côté proche, base + sabots sombres via drawLeg) ────────
+  // ── 7. MEMBRES AVANT (côté proche, base + surbrillance canon/genou) ──────────
   drawLeg(-15*s, 4*s, pose.fl, legLen, coat.base, 2.8, s);       // antérieur proche
   drawLeg( 11*s, 4*s, pose.rl, legLen, coat.base, 3.0, s);       // postérieur proche
+  {                                              // surbrillance canon de l'antérieur proche
+    const fa = pose.fl * Math.PI / 180;
+    const kx = -15*s + Math.sin(fa) * legLen * 0.5, ky = 4*s + Math.cos(fa) * legLen * 0.5;
+    ctx.strokeStyle = coat.highlight; ctx.lineWidth = 1*s;
+    ctx.beginPath(); ctx.moveTo(-15*s, 4*s); ctx.lineTo(kx, ky); ctx.stroke();
+  }
 
-  // ── 8. HARNACHEMENT (selle fine noire + rênes 1.5px) ─────────────────────────
-  ctx.fillStyle = '#15110E';
-  ctx.beginPath(); ctx.ellipse(-7*s, -7*s, 6*s, 3*s, -0.06, 0, Math.PI*2); ctx.fill(); // selle
-  ctx.strokeStyle = 'rgba(20,16,12,0.85)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(-9*s, -8*s); ctx.quadraticCurveTo(-20*s, -10*s, -26*s, -14*s); ctx.stroke();
+  // ── 8. HARNACHEMENT (tapis de selle couleur jockey + selle fine noire + rênes)
+  ctx.fillStyle = silk;                          // tapis de selle (rappel couleur jockey)
+  ctx.beginPath(); ctx.ellipse(-6*s, -6*s, 8*s, 3.4*s, -0.05, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#15110E';                     // selle fine de course
+  ctx.beginPath(); ctx.ellipse(-7*s, -7.6*s, 5.4*s, 2.5*s, -0.06, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle = 'rgba(20,16,12,0.85)'; ctx.lineWidth = 1.5;                         // rênes tendues
+  ctx.beginPath(); ctx.moveTo(-9*s, -8*s); ctx.quadraticCurveTo(-22*s, -11*s, -29*s, -16*s); ctx.stroke();
 
-  // ── 9. JOCKEY EN SUSPENSION (buste bas, parallèle à l'encolure) ──────────────
+  // ── 9. JOCKEY EN SUSPENSION (buste très bas ∥ encolure, fesses en arrière,
+  //      genoux très fléchis vers l'avant) ─────────────────────────────────────
   ctx.save();
-  ctx.translate(-8*s, -11*s);
-  ctx.rotate(-0.5);                              // penché, parallèle à l'encolure
-  ctx.strokeStyle = '#111'; ctx.lineWidth = 3.2*s;                                     // botte noire, genou fléchi
-  ctx.beginPath(); ctx.moveTo(-1*s, 3*s); ctx.quadraticCurveTo(4*s, 6*s, 7*s, 4*s); ctx.stroke();
-  ctx.fillStyle = '#F2F2F2';                     // pantalon blanc
-  ctx.beginPath(); ctx.ellipse(-1*s, 1*s, 4*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = silk;                          // casaque (APLAT SIMPLE)
-  ctx.beginPath(); ctx.ellipse(-5*s, -2*s, 4.5*s, 5*s, -0.2, 0, Math.PI*2); ctx.fill();
+  ctx.translate(-7*s, -10*s);
+  ctx.rotate(-0.55);                             // presque parallèle à l'encolure
+  ctx.strokeStyle = '#F5EFDF'; ctx.lineWidth = 3.4*s;                                  // cuisse (pantalon crème) vers l'avant
+  ctx.beginPath(); ctx.moveTo(2*s, 1*s); ctx.lineTo(-4*s, 2*s); ctx.stroke();
+  ctx.strokeStyle = '#111'; ctx.lineWidth = 3*s;                                       // botte noire haute, genou fléchi
+  ctx.beginPath(); ctx.moveTo(-4*s, 2*s); ctx.quadraticCurveTo(-6*s, 5*s, -3*s, 7*s); ctx.stroke();
+  ctx.fillStyle = '#F5EFDF';                     // fesses en arrière (au-dessus de la selle)
+  ctx.beginPath(); ctx.ellipse(3*s, -1*s, 3.5*s, 3*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = silk;                          // casaque (APLAT SIMPLE), basse et tendue
+  ctx.beginPath(); ctx.ellipse(-3*s, -3*s, 5.5*s, 4*s, -0.35, 0, Math.PI*2); ctx.fill();
   drawJockeyPattern();                           // crochet futur (no-op)
-  ctx.strokeStyle = silk; ctx.lineWidth = 2.4*s;                                       // bras vers les rênes
-  ctx.beginPath(); ctx.moveTo(-6*s, -1*s); ctx.quadraticCurveTo(-11*s, 1*s, -15*s, 0*s); ctx.stroke();
-  ctx.translate(-8*s, -6*s); ctx.rotate(0.15);                                         // casque incliné
+  ctx.strokeStyle = silk; ctx.lineWidth = 2.2*s;                                       // bras vers les rênes
+  ctx.beginPath(); ctx.moveTo(-6*s, -2*s); ctx.quadraticCurveTo(-11*s, 0, -15*s, -1*s); ctx.stroke();
+  ctx.translate(-8*s, -6*s); ctx.rotate(0.2);                                          // casque rond incliné
   ctx.fillStyle = cap;
-  ctx.beginPath(); ctx.arc(0, 0, 4*s, Math.PI*0.9, Math.PI*2.15); ctx.fill();
-  ctx.fillStyle = shade(cap, -20); ctx.fillRect(-4.5*s, -0.5*s, 5*s, 1.6*s);           // visière
-  ctx.fillStyle = 'rgba(255,235,140,0.6)';                                             // goggles
-  ctx.beginPath(); ctx.ellipse(-2.5*s, 0.2*s, 1.8*s, 1.1*s, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(0, 0, 3.8*s, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = shade(cap, -22); ctx.fillRect(-4.6*s, 0, 5*s, 1.5*s);                // visière
+  ctx.fillStyle = 'rgba(255,235,140,0.65)';                                            // goggles
+  ctx.beginPath(); ctx.ellipse(-2.6*s, -0.2*s, 1.7*s, 1*s, 0, 0, Math.PI*2); ctx.fill();
   ctx.restore();
 
   ctx.restore();
