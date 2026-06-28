@@ -641,7 +641,7 @@ const COL = IS_SAND
 function drawBg() {
   // 1. FOND PHOTO [0..TRACK_TOP] : tuiles répétées qui défilent en parallaxe (0.3×).
   if (bgReady) {
-    let currentX = -(((scrollX * BG_CONFIG.parallaxFactor) % BG_CONFIG.drawWidth + BG_CONFIG.drawWidth) % BG_CONFIG.drawWidth);
+    let currentX = -(((bgScrollX % BG_CONFIG.drawWidth) + BG_CONFIG.drawWidth) % BG_CONFIG.drawWidth);
     while (currentX < W) {
       ctx.drawImage(bgImage, currentX, 0, BG_CONFIG.drawWidth, BG_CONFIG.drawHeight);
       currentX += BG_CONFIG.drawWidth;
@@ -811,9 +811,23 @@ function updateDust() {
 
 // ── ÉTAT COURSE ───────────────────────────────────────────────────────────────
 let progress = 0, gameSpeed = 1, raceRunning = false, raceEnded = false;
-let lastTime = 0, frameCount = 0, scrollX = 0, _boost = 0;  // scrollX = défilement du décor (px)
+let lastTime = 0, frameCount = 0, scrollX = 0, _boost = 0;  // scrollX = défilement de la PISTE (px, vitesse constante)
 let STATIC_FRAME = false, _standAnchor = null;              // rendu figé ?frame ; ancre tribune (scrollX)
 const BASE_SCROLL = 430;                                     // vitesse de défilement de base (px/s)
+
+// ── VIRAGE 2.5D par PANORAMIQUE CAMÉRA (pas de déformation Y) ─────────────────
+// Le FOND a son propre scroll (bgScrollX) qui ACCÉLÈRE dans les virages (la tête de
+// caméra balaie). La piste (scrollX) reste à vitesse constante. bendAmount ∈ [0,1].
+let bgScrollX = 0, bendAmount = 0;
+let BEND_MULT = 2.2;                                         // réglable : ?bendmult= ou window.BEND_MULT
+(() => { const v = parseFloat(new URLSearchParams(location.search).get('bendmult')); if (v >= 0) BEND_MULT = v; })();
+
+// Phase de virage dérivée de progress : 0 en ligne droite, 1 au sommet du virage.
+function bendAt(p) {
+  if (p >= 0.20 && p <= 0.45) return Math.sin((p - 0.20) / 0.25 * Math.PI);
+  if (p >= 0.60 && p <= 0.85) return Math.sin((p - 0.60) / 0.25 * Math.PI);
+  return 0;
+}
 
 const PHASES = [
   { pct:0.00, label:'Départ',          comment:'Les partants s\'élancent des starting-gates !' },
@@ -877,7 +891,11 @@ function gameLoop(ts) {
     const dp = dt * 0.013 * gameSpeed * phaseMul;
     progress = Math.min(1, progress + dp);
     frameCount += dt * 14 * gameSpeed;                 // cadence galop inchangée
-    scrollX  += dt * BASE_SCROLL * gameSpeed * phaseMul;  // décor défile droite → gauche
+    const trackStep = dt * BASE_SCROLL * gameSpeed * phaseMul;
+    scrollX += trackStep;                              // PISTE : vitesse CONSTANTE (inchangé)
+    bendAmount = bendAt(progress);                     // phase de virage
+    // FOND : scroll découplé qui ACCÉLÈRE dans le virage (panoramique caméra).
+    bgScrollX += trackStep * BG_CONFIG.parallaxFactor * (1 + BEND_MULT * bendAmount);
     if (progress > 0.85 && _standAnchor === null) _standAnchor = scrollX;  // tribune entre par la droite
 
     // Cadence galop sprite : 1 frame toutes les 1000/fps ms (dt en s → ×1000), × vitesse.
@@ -953,9 +971,9 @@ function drawHudMinimap() {
   const fa = -Math.PI / 2;
   ctx.fillStyle = '#E83A2A';
   ctx.beginPath(); ctx.arc(cx + Math.cos(fa) * rx, cy + Math.sin(fa) * ry, 3.6, 0, Math.PI * 2); ctx.fill();
-  // points mobiles = chaque cheval
+  // points mobiles = chaque cheval (sens ANTI-HORAIRE = cohérent virages à gauche)
   for (const r of RUNNERS) {
-    const a = -Math.PI / 2 + runnerS(r, progress) * Math.PI * 2;
+    const a = -Math.PI / 2 - runnerS(r, progress) * Math.PI * 2;
     const px = cx + Math.cos(a) * rx, py = cy + Math.sin(a) * ry;
     ctx.fillStyle = r.silk;
     ctx.beginPath(); ctx.arc(px, py, r.isPlayer ? 3.4 : 2.4, 0, Math.PI * 2); ctx.fill();
@@ -993,12 +1011,15 @@ function renderFrame() {
   RUNNERS.forEach((r, i) => {
     const tgt = targetLaneY(r, i, progress, rankOf.get(r));
     if (STATIC_FRAME) r._y = tgt; else r._y += (tgt - r._y) * 0.02;
+    // VIRAGE : tassement Y vers le centre de piste (RATIO), proportionnel à bendAmount.
+    // Aucun offset de courbure, aucune compression X. Rendu final en pixels normal.
+    r._cy = r._y + (LANE_CENTER - r._y) * bendAmount * 0.3;
   });
-  const sorted = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => a.r._y - b.r._y);
+  const sorted = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => a.r._cy - b.r._cy);
 
   sorted.forEach(({r,i}) => {
     const xPct = runnerXPct(r, progress);
-    const yPct = r._y;                       // Y animé (CHANTIER 2)
+    const yPct = r._cy;                      // Y animé (CHANTIER 2) + tassement virage
 
     const px = xPct * W;
     const py = yPct * H;
@@ -1250,7 +1271,10 @@ if (_frame !== null) {
   const renderStaticFrame = () => {
     progress   = Math.max(0, Math.min(1, parseFloat(_frame) || 0));
     frameCount = progress * 200;        // pose de galop cohérente
-    scrollX    = progress * 6000;       // décor défilant cohérent
+    scrollX    = progress * 6000;       // piste : défilement constant cohérent
+    bendAmount = bendAt(progress);      // phase de virage figée
+    // bgScrollX figé = intégrale de l'accélération de virage jusqu'à progress (déterministe).
+    { let acc = 0; const N = 600; for (let k = 0; k < N; k++) { const pp = (k + 0.5) / N * progress; acc += (6000 * progress / N) * BG_CONFIG.parallaxFactor * (1 + BEND_MULT * bendAt(pp)); } bgScrollX = acc; }
     _standAnchor = 0.85 * 6000;         // tribune ancrée à p=0.85 (cohérent avec scrollX figé)
     if (typeof HORSE_META !== 'undefined') {   // frames déterministes (capture reproductible)
       const fb = Math.floor(progress * 60);
