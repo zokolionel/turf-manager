@@ -971,27 +971,60 @@ function drawHudRanking() {
   }
   ctx.restore();
 }
-// Mini-map en bas à droite : ovale vert foncé, point rouge FIXE = ligne d'arrivée,
-// points colorés mobiles = position de chaque cheval (par sa progression réelle).
+// ── Mini-map STADE OBLONG (ratio mw/mh = 2.2) : contour stade + 1 point rouge/cheval.
+// Géométrie partagée par stadiumPath (contour) et stadiumPoint (position cheval).
+const MM = { mx: W - 108, my: H - 54, mw: 88, mh: 40 };   // mw/mh = 2.2 ; centré (W-64, H-34)
+
+// Contour « stade » : 2 droites + 2 demi-cercles. r = mh/2, S = mw - 2r.
+function stadiumPath(mx, my, mw, mh, ctx) {
+  const r = mh / 2;
+  const topY = my, botY = my + mh, cyc = my + r;
+  const leftCx = mx + r, rightCx = mx + mw - r, midX = mx + mw / 2;
+  ctx.beginPath();
+  ctx.moveTo(midX, topY);                                    // milieu de la droite haute
+  ctx.lineTo(leftCx, topY);                                  // va gauche S/2
+  ctx.arc(leftCx, cyc, r, -Math.PI / 2, Math.PI / 2, true);  // demi-cercle gauche (anti-horaire)
+  ctx.lineTo(rightCx, botY);                                 // droite basse S
+  ctx.arc(rightCx, cyc, r, Math.PI / 2, -Math.PI / 2, true); // demi-cercle droit (anti-horaire)
+  ctx.lineTo(midX, topY);                                    // droite haute S/2 (retour arrivée)
+  ctx.closePath();
+}
+
+// Position {x,y} d'un cheval sur le parcours selon sa progression p∈[0,1] (anti-horaire).
+function stadiumPoint(p) {
+  const { mx, my, mw, mh } = MM, r = mh / 2;
+  const topY = my, botY = my + mh, cyc = my + r;
+  const leftCx = mx + r, rightCx = mx + mw - r, midX = mx + mw / 2;
+  p = Math.max(0, Math.min(1, p));
+  if (p < 0.20) {                                  // droite haute : milieu → virage gauche
+    return { x: midX + (leftCx - midX) * (p / 0.20), y: topY };
+  } else if (p < 0.45) {                           // demi-cercle gauche (haut → bas)
+    const a = -Math.PI / 2 - (p - 0.20) / 0.25 * Math.PI;
+    return { x: leftCx + r * Math.cos(a), y: cyc + r * Math.sin(a) };
+  } else if (p < 0.60) {                           // droite basse : gauche → droite
+    return { x: leftCx + (rightCx - leftCx) * ((p - 0.45) / 0.15), y: botY };
+  } else if (p < 0.85) {                           // demi-cercle droit (bas → haut)
+    const a = Math.PI / 2 - (p - 0.60) / 0.25 * Math.PI;
+    return { x: rightCx + r * Math.cos(a), y: cyc + r * Math.sin(a) };
+  }
+  return { x: rightCx + (midX - rightCx) * ((p - 0.85) / 0.15), y: topY }; // droite haute → arrivée
+}
+
+// Mini-map en bas à droite : contour stade vert foncé + liseré blanc ; pour chaque
+// cheval, un point rouge (r=3) à liseré blanc (r=4) positionné via stadiumPoint().
+// (horse.progress = progression réelle du cheval = runnerS(r, progress).)
 function drawHudMinimap() {
-  const cx = W - 64, cy = H - 34, rx = 48, ry = 22;
   ctx.save();
-  _panel(cx - rx - 10, cy - ry - 10, (rx + 10) * 2, (ry + 10) * 2);
-  ctx.strokeStyle = '#16401E'; ctx.lineWidth = 9;
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
-  // point rouge FIXE = ligne d'arrivée (haut de l'ovale)
-  const fa = -Math.PI / 2;
-  ctx.fillStyle = '#E83A2A';
-  ctx.beginPath(); ctx.arc(cx + Math.cos(fa) * rx, cy + Math.sin(fa) * ry, 3.6, 0, Math.PI * 2); ctx.fill();
-  // points mobiles = chaque cheval (sens ANTI-HORAIRE = cohérent virages à gauche)
+  _panel(MM.mx - 8, MM.my - 8, MM.mw + 16, MM.mh + 16);
+  stadiumPath(MM.mx, MM.my, MM.mw, MM.mh, ctx);
+  ctx.fillStyle = '#16401E'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
   for (const r of RUNNERS) {
-    const a = -Math.PI / 2 - runnerS(r, progress) * Math.PI * 2;
-    const px = cx + Math.cos(a) * rx, py = cy + Math.sin(a) * ry;
-    ctx.fillStyle = r.silk;
-    ctx.beginPath(); ctx.arc(px, py, r.isPlayer ? 3.4 : 2.4, 0, Math.PI * 2); ctx.fill();
-    if (r.isPlayer) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke(); }
+    const pt = stadiumPoint(runnerS(r, progress));
+    ctx.fillStyle = '#E83A2A';
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }
