@@ -338,6 +338,8 @@ function updateTacticalPhases(p) {
     const targetBias = Math.max(-0.02, Math.min(0.02, (m - 1) * 0.08)) * fade;
     r.tacticalDX += (targetBias - r.tacticalDX) * 0.06;
     r.stamina = Math.max(0, r.stamina - (m > 1.0 ? 0.002 : 0.001));
+    // Modif 3 : meneur cramé en fin de course → malus X à la borne négative max.
+    if (prof === 'meneur' && r.stamina < 0.3 && p > 0.85) r.tacticalDX = -0.02;
   }
 }
 // Déboîtement Y sur enfermement (un cheval coincé derrière un autre cherche un couloir
@@ -346,22 +348,33 @@ function updateTacticalPhases(p) {
 function resolvePelotonTactics() {
   for (const r of RUNNERS) r._x = runnerXPct(r, progress);
   const free = (A, y) => !RUNNERS.some(B => B !== A && Math.abs(B._x - A._x) < 0.05 && Math.abs(B._y - y) < 0.03);
+  // lerp variable : attraction corde (départ) 0.06, éventail final 0.05, sinon 0.02.
+  const lerpF = (progress < 0.10) ? 0.06 : (progress > 0.85) ? 0.05 : 0.02;
   for (const A of RUNNERS) {
     if (A.laneChangeCooldown > 0) A.laneChangeCooldown--;
     A.isEnferme = false;
-    if (progress > 0.20) {
+    if (progress < 0.10) {                                   // Modif 1 : attraction corde MASSIVE (tous)
+      A.targetRatioY = LANE_T + 0.02;
+    } else if (progress < 0.20) {                            // rétablir la lane native du profil
+      A.targetRatioY = getDefaultY(A.tacticalProfile);
+    } else if (progress > 0.85) {                            // Modif 2 : éventail final par profil
+      const pr = A.tacticalProfile;
+      A.targetRatioY = (pr === 'meneur' || pr === 'suiveur_corde') ? LANE_T + 0.02
+                     : (pr === 'outsider' || pr === 'pistard')     ? LANE_B - 0.02
+                     :                                               (LANE_T + LANE_B) / 2;
+    } else {                                                 // 0.20–0.85 : enfermement → déboîtement Y
       for (const B of RUNNERS) {
         if (B === A) continue;
         if (B._x > A._x && (B._x - A._x) < 0.05 && Math.abs(B._y - A._y) < 0.03) { A.isEnferme = true; break; }
       }
+      if (A.isEnferme && A.laneChangeCooldown === 0) {
+        const up = A.targetRatioY - 0.06, dn = A.targetRatioY + 0.06;
+        if (up >= LANE_T && free(A, up))      { A.targetRatioY = up; A.laneChangeCooldown = 10; }
+        else if (dn <= LANE_B && free(A, dn)) { A.targetRatioY = dn; A.laneChangeCooldown = 10; }
+        // sinon : reste enfermé (aucun frein X)
+      }
     }
-    if (A.isEnferme && A.laneChangeCooldown === 0) {
-      const up = A.targetRatioY - 0.06, dn = A.targetRatioY + 0.06;
-      if (up >= LANE_T && free(A, up))      { A.targetRatioY = up; A.laneChangeCooldown = 10; }
-      else if (dn <= LANE_B && free(A, dn)) { A.targetRatioY = dn; A.laneChangeCooldown = 10; }
-      // sinon : reste enfermé (aucun frein X)
-    }
-    A._y = STATIC_FRAME ? A.targetRatioY : A._y + (A.targetRatioY - A._y) * 0.02;
+    A._y = STATIC_FRAME ? A.targetRatioY : A._y + (A.targetRatioY - A._y) * lerpF;
     A._y = Math.max(LANE_T, Math.min(LANE_B, A._y));
   }
 }
@@ -705,6 +718,9 @@ const RACE_DIST = (() => {
   const d = parseInt(new URLSearchParams(location.search).get('distance'), 10);
   return d > 0 ? d : 1600;
 })();
+// TOTAL_DISTANCE (HUD distance) : absent du code → on réutilise la vraie distance de
+// course RACE_DIST (param ?distance, fallback 1600) plutôt qu'une constante codée en dur.
+const TOTAL_DISTANCE = RACE_DIST;
 
 // Palette des bandes selon la surface. sky = ciel gris-bleu statique (réf. SO-Touch).
 const COL = IS_SAND
@@ -1099,32 +1115,34 @@ function drawHudMinimap() {
   stadiumPath(MM.mx, MM.my, MM.mw, MM.mh, ctx);
   ctx.fillStyle = '#16401E'; ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
-  // marqueur ARRIVÉE fixe (cercle jaune r=4 + liseré blanc r=5) à stadiumPoint(0).
+  // points colorés = chaque cheval (couleur casaque r.silk + liseré blanc 1px).
+  for (const r of RUNNERS) {
+    const pt = stadiumPoint(runnerS(r, progress));
+    ctx.fillStyle = r.silk;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2); ctx.stroke();
+  }
+  // stadiumPoint(0) = départ ET arrivée (même point) → 2 symboles distincts, dessinés
+  // par-dessus les points chevaux : cercle JAUNE = arrivée, carré BLANC 4×4 = départ.
   const arrPos = stadiumPoint(0);
   ctx.fillStyle = '#F5D21E';
   ctx.beginPath(); ctx.arc(arrPos.x, arrPos.y, 4, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
   ctx.beginPath(); ctx.arc(arrPos.x, arrPos.y, 5, 0, Math.PI * 2); ctx.stroke();
-  // point du JOUEUR uniquement (rouge r=3 + liseré blanc r=4).
-  for (const r of RUNNERS) {
-    if (!r.isPlayer) continue;
-    const pt = stadiumPoint(runnerS(r, progress));
-    ctx.fillStyle = '#E83A2A';
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2); ctx.stroke();
-  }
+  ctx.fillStyle = '#fff'; ctx.fillRect(arrPos.x - 2, arrPos.y - 2, 4, 4);   // départ (carré blanc)
   ctx.restore();
 }
-// Distance restante : texte jaune sur fond noir, AU-DESSUS de la mini-map. → 0 m.
-function drawHudDistance() {
-  const remain = Math.max(0, Math.round(RACE_DIST * (1 - progress) / 25) * 25);
+// Panneau distance restante (HUD SO Touch) : encart noir, texte jaune #FFD700, au-dessus
+// de la mini-map. Distance = TOTAL_DISTANCE * (1 - progress), précision au mètre.
+function drawDistanceHUD() {
+  const remain = Math.max(0, Math.round(TOTAL_DISTANCE * (1 - progress)));
   const cx = W - 64, boxW = 80, boxH = 22, x = cx - boxW / 2, y = H - 34 - 22 - 10 - boxH;
   ctx.save();
-  ctx.fillStyle = '#000';
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
   ctx.beginPath(); ctx.roundRect(x, y, boxW, boxH, 4); ctx.fill();
-  ctx.fillStyle = '#F5D21E'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 16px Arial';
-  ctx.fillText(remain + ' m', cx, y + boxH / 2 + 1);
+  ctx.fillStyle = '#FFD700'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = 'bold 14px Arial';
+  ctx.fillText(remain + 'm', cx, y + boxH / 2 + 1);
   ctx.restore();
 }
 
@@ -1248,7 +1266,7 @@ function renderFrame() {
   // HUD in-scène (SO-Touch) : classement, mini-map, distance restante
   drawHudRanking();
   drawHudMinimap();
-  drawHudDistance();
+  drawDistanceHUD();
 }
 
 function setPhaseUI(idx) {
