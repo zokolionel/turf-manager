@@ -786,7 +786,9 @@ function drawStartGates(p) {
 
 // ── PARTICULES DE POUSSIÈRE ──────────────────────────────────────────────────
 const dustParticles = [];
+const MAX_DUST = 70;                 // garde-fou perf 60fps mobile (course rapide / gros peloton)
 function spawnDust(x, y, color) {
+  if (dustParticles.length >= MAX_DUST) return;   // cap : empêche l'explosion du tableau
   for (let i = 0; i < 2; i++) {
     dustParticles.push({
       x, y: y + (Math.random() - 0.5) * 6,
