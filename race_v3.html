@@ -230,6 +230,9 @@ const LANE_H = (LANE_B - LANE_T) / Math.max(1, RUNNERS.length - 1);
 // _y (lane animée) + frame de galop sprite (désync : offset aléatoire 0..nframes-1).
 RUNNERS.forEach((r, i) => {
   r._y = LANES[i];
+  r.targetY = r._y;        // Y cible (ratio) — lane de base, alimentée par targetLaneY
+  r.laneOffset = 0;        // décalage dynamique de séparation (IA peloton)
+  r.cooldown = 0;          // anti-zig-zag (en frames)
   r.frame = (typeof HORSE_META !== 'undefined') ? Math.floor(Math.random() * HORSE_META.nframes) : 0;
   r.frameTimer = 0;
 });
@@ -289,6 +292,30 @@ function targetLaneY(r, i, p, rank) {
     y += ((LANE_T + LANE_H * 0.5) - y) * pull * 0.6;
   }
   return Math.max(LANE_T, Math.min(LANE_B, y));
+}
+
+// IA PELOTON — séparation Y anti-fusion. Quand 2 chevaux se chevauchent (proches en X
+// ET dans le même couloir Y), le cheval cherche un couloir libre (dessus puis dessous),
+// avec cooldown anti-zig-zag, puis revient doucement vers sa lane. AUCUN frein sur X.
+// O(n²) borné (≤8 partants). Appelée par renderFrame entre la lane de base et le tassement.
+function resolvePelotonY() {
+  for (const r of RUNNERS) r._x = runnerXPct(r, progress);      // X courant (proximité)
+  for (const A of RUNNERS) {
+    if (A.cooldown > 0) A.cooldown--;
+    let collision = false;
+    for (const B of RUNNERS) {
+      if (B === A) continue;
+      if (Math.abs(B._x - A._x) < 0.04 && Math.abs(B._y - A._y) < 0.015) { collision = true; break; }
+    }
+    if (collision && A.cooldown === 0) {
+      if (A._y - 0.02 >= LANE_T)      A.laneOffset = -0.02;     // tenter le couloir du dessus
+      else if (A._y + 0.02 <= LANE_B) A.laneOffset = +0.02;     // sinon celui du dessous
+      // sinon : enfermement visuel, on reste (pas de frein X)
+      A.cooldown = 30;
+    }
+    A.laneOffset *= 0.97;                                       // retour progressif vers la lane
+    A._y = Math.max(LANE_T, Math.min(LANE_B, A.targetY + A.laneOffset));
+  }
 }
 
 // ── DESSIN CHEVAL ─────────────────────────────────────────────────────────────
@@ -1076,13 +1103,15 @@ function renderFrame() {
   // CHANTIER 3 — z-order DYNAMIQUE : tri par Y RÉEL (`r._y`) recalculé chaque frame.
   const order = [...RUNNERS].sort((a, b) => runnerS(b, progress) - runnerS(a, progress));
   const rankOf = new Map(); order.forEach((rr, k) => rankOf.set(rr, k));
+  // Lane de BASE (targetY) : lerp 0.02 vers la cible (convergence / oscillation / corde).
   RUNNERS.forEach((r, i) => {
     const tgt = targetLaneY(r, i, progress, rankOf.get(r));
-    if (STATIC_FRAME) r._y = tgt; else r._y += (tgt - r._y) * 0.02;
-    // VIRAGE : tassement Y vers le centre de piste (RATIO), proportionnel à bendAmount.
-    // Aucun offset de courbure, aucune compression X. Rendu final en pixels normal.
-    r._cy = r._y + (LANE_CENTER - r._y) * bendAmount * 0.3;
+    if (STATIC_FRAME) r.targetY = tgt; else r.targetY += (tgt - r.targetY) * 0.02;
   });
+  // IA peloton : séparation Y anti-fusion (ajuste r._y = clamp(targetY + laneOffset)).
+  resolvePelotonY();
+  // VIRAGE : tassement Y vers le centre (RATIO ∝ bendAmount), appliqué SUR le _y ajusté.
+  RUNNERS.forEach((r) => { r._cy = r._y + (LANE_CENTER - r._y) * bendAmount * 0.3; });
   const sorted = RUNNERS.map((r, i) => ({ r, i })).sort((a, b) => a.r._cy - b.r._cy);
 
   sorted.forEach(({r,i}) => {
