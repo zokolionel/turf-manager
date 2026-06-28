@@ -116,6 +116,9 @@ canvas { display:block; width:100%; }
 <button class="btn-primary" id="btn-start" onclick="startRace()">🏁 Lancer la course</button>
 <button class="btn-secondary" onclick="location.reload()">↺ Rejouer</button>
 
+<!-- Sprites chevaux vectoriels (Path2D, 10 frames @ 22fps). Chargé AVANT le moteur :
+     expose drawHorseSprite() + HORSE_META. Fallback drawHorse() si absent. -->
+<script src="horse_vector_assets.js"></script>
 <script>
 const C = document.getElementById('raceCanvas');
 const ctx = C.getContext('2d');
@@ -224,7 +227,12 @@ const LANES = RUNNERS.map((r, i) =>
 // Le z-order n'utilise PLUS de lane fixe — il est trié par `_y` chaque frame (CHANTIER 3).
 const LANE_CENTER = (LANE_T + LANE_B) / 2;
 const LANE_H = (LANE_B - LANE_T) / Math.max(1, RUNNERS.length - 1);
-RUNNERS.forEach((r, i) => { r._y = LANES[i]; });
+// _y (lane animée) + frame de galop sprite (désync : offset aléatoire 0..nframes-1).
+RUNNERS.forEach((r, i) => {
+  r._y = LANES[i];
+  r.frame = (typeof HORSE_META !== 'undefined') ? Math.floor(Math.random() * HORSE_META.nframes) : 0;
+  r.frameTimer = 0;
+});
 
 // ── STANDINGS & CAMÉRA (side-scroller SO-Touch) ──────────────────────────────
 // Caméra fixe : les chevaux restent dans une bande centrée, c'est le fond qui
@@ -574,6 +582,24 @@ function drawHorse(cx, cy, s, fi, body, silk, cap, trim, isPlayer, motionBlur, f
 
 // (_drawHorseBody supprimé : son rendu est désormais intégré dans drawHorse ci-dessus.)
 
+// Sprite vectoriel (horse_vector_assets.js) + depth fog en source-atop APRÈS le draw,
+// dans un buffer offscreen réutilisé → le voile ne teinte QUE les pixels du cheval (pas
+// le décor). fog négligeable (chevaux de devant) = draw direct, sans buffer.
+let _fogCv = null, _fogCx = null;
+function drawHorseFogged(px, hoofY, sc, frame, body, silk, fog) {
+  if (fog <= 0.03) { drawHorseSprite(ctx, px, hoofY, sc, frame, body, silk); return; }
+  if (!_fogCv) { _fogCv = document.createElement('canvas'); _fogCv.width = 320; _fogCv.height = 220; _fogCx = _fogCv.getContext('2d'); }
+  const ax = HORSE_META.anchorX * sc, ay = HORSE_META.anchorY * sc;
+  _fogCx.setTransform(1, 0, 0, 1, 0, 0);
+  _fogCx.clearRect(0, 0, _fogCv.width, _fogCv.height);
+  drawHorseSprite(_fogCx, ax, ay, sc, frame, body, silk);          // ancre (ax,ay) dans le buffer
+  _fogCx.globalCompositeOperation = 'source-atop';
+  _fogCx.fillStyle = `rgba(8,16,28,${fog})`;
+  _fogCx.fillRect(0, 0, _fogCv.width, _fogCv.height);
+  _fogCx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(_fogCv, px - ax, hoofY - ay);                       // (ax,ay) → (px,hoofY)
+}
+
 // ── FOND DÉFILANT (réf. Starters Orders Touch) : voir drawBg / scrollX ────────
 // Discipline → herbe (plat/obstacle/défaut) ou sable (trot/Vincennes). Plus de PNG.
 function pickDiscipline() {
@@ -854,6 +880,15 @@ function gameLoop(ts) {
     scrollX  += dt * BASE_SCROLL * gameSpeed * phaseMul;  // décor défile droite → gauche
     if (progress > 0.85 && _standAnchor === null) _standAnchor = scrollX;  // tribune entre par la droite
 
+    // Cadence galop sprite : 1 frame toutes les 1000/fps ms (dt en s → ×1000), × vitesse.
+    if (typeof HORSE_META !== 'undefined') {
+      const fstep = 1000 / HORSE_META.fps, fdt = dt * 1000 * gameSpeed;
+      for (const r of RUNNERS) {
+        r.frameTimer += fdt;
+        while (r.frameTimer >= fstep) { r.frame = (r.frame + 1) % HORSE_META.nframes; r.frameTimer -= fstep; }
+      }
+    }
+
     document.getElementById('prog-fill').style.width = (progress * 100).toFixed(1) + '%';
     maybeDramaComment();
 
@@ -968,66 +1003,82 @@ function renderFrame() {
     const px = xPct * W;
     const py = yPct * H;
 
-    // Perspective 2.5D : depth/scale/fog dérivés du Y RÉEL → cohérent avec le z-order
+    // Perspective 2.5D : depth → scale + voile de profondeur (fog), cohérent z-order.
     const depth = laneDepth(yPct);
-    const sc = (0.70 + depth * 0.30) * (r.isPlayer ? 1.06 : 1.0);
-
-    // AUCUN motion blur, AUCUNE inclinaison (réf. SO-Touch)
-    const tilt = 0;
-    const blur = 0;
-
-    // Ombre
-    ctx.save();
-    ctx.globalAlpha = 0.18 + depth * 0.12;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(px - 3*sc, py + 4*sc, 22*sc, 5*sc, 0, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-
-    // Poussière — boost au départ + coup de rein du joueur.
-    const departBoost = progress < 0.04 ? 4 : 1;
-    const kick = (r.isPlayer && _boost > 0.05) ? 5 : 1;
-    if (raceRunning && depth > 0.45 && Math.random() < 0.15 * gameSpeed * departBoost * kick) {
-      spawnDust(px - 10*sc, py + 14*sc, r.body);
-    }
-
-    // Cheval (fog = voile de profondeur ; tilt = inclinaison virage)
     const fog = (1 - depth) * 0.32;
-    if (spriteManager.isLoaded) {
-      // Rendu SPRITE (actif seulement si horse_base.png + jockey_base.png chargés)
-      const frameIndex = Math.floor(frameCount + i * 1.7) % 8;
-      spriteManager.renderSprite(ctx, r.id, frameIndex, px, py, sc, fog);
+
+    if (typeof drawHorseSprite === 'function') {
+      // ── SPRITE VECTORIEL (horse_vector_assets.js) : ancre = sabots à py (= r._y) ──
+      const sS = (0.42 + depth * 0.20) * (r.isPlayer ? 1.06 : 1.0);   // scale 2.5D (fond→avant)
+      const topY = py - HORSE_META.frameH * sS;                       // haut du sprite
+
+      ctx.save();                                                     // ombre sous les sabots
+      ctx.globalAlpha = 0.18 + depth * 0.12; ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(px, py - 2*sS, 58*sS, 8*sS, 0, 0, Math.PI*2); ctx.fill();
+      ctx.restore();
+
+      if (raceRunning && depth > 0.45 && Math.random() < 0.15 * gameSpeed * (progress < 0.04 ? 4 : 1)) {
+        spawnDust(px - 8*sS, py - 3*sS, r.body);                      // poussière sous les sabots
+      }
+
+      drawHorseFogged(px, py, sS, r.frame, r.body, r.silk, fog);      // cheval + fog source-atop APRÈS
+
+      if (depth > 0.4) {                                              // numéro dossard (au-dessus du dos)
+        const by = topY + 6;
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.beginPath(); ctx.roundRect(px - 9, by - 6, 18, 13, 3); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.font = 'bold 10px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(r.id, px, by + 1);
+        ctx.restore();
+      }
+
+      if (r.isPlayer && raceRunning) {                               // halo joueur
+        ctx.save();
+        ctx.globalAlpha = 0.25 + Math.sin(Date.now() * 0.004) * 0.1;
+        ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(px, py - HORSE_META.frameH * sS * 0.45, HORSE_META.frameW * sS * 0.5, HORSE_META.frameH * sS * 0.5, 0, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.restore();
+      }
     } else {
-      // Fallback VECTORIEL par défaut (rendu inchangé tant que les PNG sont absents)
-      drawHorse(px, py, sc, Math.floor(frameCount + i * 1.7), r.body, r.silk, r.cap, r.trim, r.isPlayer, blur, fog, tilt);
-    }
+      // ── FALLBACK : SpriteManager PNG (dormant) sinon rendu VECTORIEL drawHorse ──
+      const sc = (0.70 + depth * 0.30) * (r.isPlayer ? 1.06 : 1.0);
 
-    // Numéro dossard (visible au premier plan)
-    if (depth > 0.4) {
       ctx.save();
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.beginPath();
-      ctx.roundRect(px - 8*sc, py - 28*sc, 16*sc, 12*sc, 3*sc);
-      ctx.fill();
-      ctx.fillStyle = 'white';
-      ctx.font = `bold ${9*sc}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(r.id, px, py - 22*sc);
+      ctx.globalAlpha = 0.18 + depth * 0.12; ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(px - 3*sc, py + 4*sc, 22*sc, 5*sc, 0, 0, Math.PI*2); ctx.fill();
       ctx.restore();
-    }
 
-    // Halo joueur
-    if (r.isPlayer && raceRunning) {
-      ctx.save();
-      ctx.globalAlpha = 0.25 + Math.sin(Date.now() * 0.004) * 0.1;
-      ctx.strokeStyle = '#C9A84C';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(px, py, 30*sc, 16*sc, 0, 0, Math.PI*2);
-      ctx.stroke();
-      ctx.restore();
+      if (raceRunning && depth > 0.45 && Math.random() < 0.15 * gameSpeed * (progress < 0.04 ? 4 : 1)) {
+        spawnDust(px - 10*sc, py + 14*sc, r.body);
+      }
+
+      if (spriteManager.isLoaded) {
+        spriteManager.renderSprite(ctx, r.id, Math.floor(frameCount + i * 1.7) % 8, px, py, sc, fog);
+      } else {
+        drawHorse(px, py, sc, Math.floor(frameCount + i * 1.7), r.body, r.silk, r.cap, r.trim, r.isPlayer, 0, fog, 0);
+      }
+
+      if (depth > 0.4) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
+        ctx.beginPath(); ctx.roundRect(px - 8*sc, py - 28*sc, 16*sc, 12*sc, 3*sc); ctx.fill();
+        ctx.fillStyle = 'white'; ctx.font = `bold ${9*sc}px Arial`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(r.id, px, py - 22*sc);
+        ctx.restore();
+      }
+
+      if (r.isPlayer && raceRunning) {
+        ctx.save();
+        ctx.globalAlpha = 0.25 + Math.sin(Date.now() * 0.004) * 0.1;
+        ctx.strokeStyle = '#C9A84C'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(px, py, 30*sc, 16*sc, 0, 0, Math.PI*2); ctx.stroke();
+        ctx.restore();
+      }
     }
   });
 
@@ -1201,6 +1252,10 @@ if (_frame !== null) {
     frameCount = progress * 200;        // pose de galop cohérente
     scrollX    = progress * 6000;       // décor défilant cohérent
     _standAnchor = 0.85 * 6000;         // tribune ancrée à p=0.85 (cohérent avec scrollX figé)
+    if (typeof HORSE_META !== 'undefined') {   // frames déterministes (capture reproductible)
+      const fb = Math.floor(progress * 60);
+      RUNNERS.forEach((r, i) => { r.frame = (fb + i * 3) % HORSE_META.nframes; });
+    }
     let pidx = 0;
     for (let i = PHASES.length - 1; i >= 0; i--) { if (progress >= PHASES[i].pct) { pidx = i; break; } }
     setPhaseUI(pidx);
