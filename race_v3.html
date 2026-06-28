@@ -1019,7 +1019,15 @@ function drawHudMinimap() {
   stadiumPath(MM.mx, MM.my, MM.mw, MM.mh, ctx);
   ctx.fillStyle = '#16401E'; ctx.fill();
   ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 1.5; ctx.stroke();
+  // marqueur ARRIVÉE fixe (cercle jaune r=4 + liseré blanc r=5) à stadiumPoint(0).
+  const arrPos = stadiumPoint(0);
+  ctx.fillStyle = '#F5D21E';
+  ctx.beginPath(); ctx.arc(arrPos.x, arrPos.y, 4, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(arrPos.x, arrPos.y, 5, 0, Math.PI * 2); ctx.stroke();
+  // point du JOUEUR uniquement (rouge r=3 + liseré blanc r=4).
   for (const r of RUNNERS) {
+    if (!r.isPlayer) continue;
     const pt = stadiumPoint(runnerS(r, progress));
     ctx.fillStyle = '#E83A2A';
     ctx.beginPath(); ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2); ctx.fill();
