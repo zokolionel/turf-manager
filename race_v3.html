@@ -1055,8 +1055,8 @@ function renderFrame() {
   _leaderS = leaderS(progress);          // cache leader 1×/frame (X + classement)
   drawBg();                              // fond WebP (parallaxe) + piste procédurale
   drawStartGates(progress);              // stalles (reculent avec le décor)
-  // ligne d'arrivée : défile depuis la droite dans les derniers mètres, passe au poteau à p≈1
-  if (progress > 0.86) { const fx = X_LEADER * W + (1 - progress) * 5 * W; if (fx < W + 40) drawFinishLine(fx); }
+  // ligne d'arrivée : ANCRÉE à un X écran FIXE (tiers droit) pendant toute la course.
+  drawFinishLine(W * 0.7);
   updateDust();
   // Voile de peloton (subtil) : léger halo de poussière sur la bande de course.
   if (raceRunning && dustParticles.length > 12) {
