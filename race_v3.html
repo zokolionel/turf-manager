@@ -760,19 +760,23 @@ function drawRail(y) {
   ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(0, y - 4, W, 2);// liseré clair
 }
 
-// Poteau d'arrivée : repère FIXE en coordonnées écran (x = W*0.7). Mât blanc du rail
-// haut au rail bas, disque rouge au sommet, texte « 0m » au-dessus.
+// Poteau d'arrivée (réf. SO Touch) : objet MONDE qui défile avec la piste via scrollX.
+// X écran = _finishX − scrollX (même logique que l'ancienne ligne d'arrivée). Mât blanc,
+// disque-cible au sommet, panneau rouge « 0 » au sol.
 function drawFinishPost() {
-  const fx = W * 0.7, top = RAIL_U * H, bot = RAIL_L * H;
+  if (_finishX === null) _finishX = scrollX + W;    // ancre monde : entre par le bord droit
+  const fx = _finishX - scrollX, top = RAIL_U * H, bot = RAIL_L * H;
   ctx.save();
-  ctx.fillStyle = '#fff';                           // mât blanc vertical (~4px)
+  ctx.fillStyle = '#fff';                           // mât blanc vertical (4px), rail haut → bas
   ctx.fillRect(fx - 2, top, 4, bot - top);
-  ctx.fillStyle = '#E83A2A';                        // disque rouge au sommet
-  ctx.beginPath(); ctx.arc(fx, top, 12, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
-  ctx.fillStyle = '#fff';                           // texte « 0m » au-dessus du disque
-  ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  ctx.fillText('0m', fx, top - 16);
+  // disque « cible » au sommet : blanc r=14, bordure rouge 3px, point rouge central r=5
+  ctx.beginPath(); ctx.arc(fx, top, 14, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = '#E83A2A'; ctx.stroke();
+  ctx.beginPath(); ctx.arc(fx, top, 5, 0, Math.PI * 2); ctx.fillStyle = '#E83A2A'; ctx.fill();
+  // panneau circulaire rouge au sol : r=12, chiffre « 0 » blanc centré
+  ctx.beginPath(); ctx.arc(fx, bot, 12, 0, Math.PI * 2); ctx.fillStyle = '#E83A2A'; ctx.fill();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 14px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('0', fx, bot);
   ctx.restore();
 }
 
@@ -833,6 +837,7 @@ const BASE_SCROLL = 430;                                     // vitesse de défi
 // Le FOND a son propre scroll (bgScrollX) qui ACCÉLÈRE dans les virages (la tête de
 // caméra balaie). La piste (scrollX) reste à vitesse constante. bendAmount ∈ [0,1].
 let bgScrollX = 0, bendAmount = 0;
+let _finishX = null;                              // X MONDE du poteau d'arrivée (ancré au 1er affichage)
 let BEND_MULT = 2.2;                                         // réglable : ?bendmult= ou window.BEND_MULT
 (() => { const v = parseFloat(new URLSearchParams(location.search).get('bendmult')); if (v >= 0) BEND_MULT = v; })();
 
@@ -1055,8 +1060,8 @@ function renderFrame() {
   _leaderS = leaderS(progress);          // cache leader 1×/frame (X + classement)
   drawBg();                              // fond WebP (parallaxe) + piste procédurale
   drawStartGates(progress);              // stalles (reculent avec le décor)
-  // poteau d'arrivée : visible uniquement dans les tout derniers mètres (progress > 0.90).
-  if (progress > 0.90) drawFinishPost();
+  // poteau d'arrivée (monde défilant) : visible uniquement dans les tout derniers mètres.
+  if (progress > 0.98) drawFinishPost();
   updateDust();
   // Voile de peloton (subtil) : léger halo de poussière sur la bande de course.
   if (raceRunning && dustParticles.length > 12) {
